@@ -1,5 +1,5 @@
 // NavOne 대시보드 — API 호출 헬퍼
-const API_BASE = "https://navone-server.vercel.app";
+const API_BASE = "https://navone-server-production.up.railway.app";
 const LICENSE_KEY = "navone_license_key";
 const SETTINGS_KEY = "navone_settings";
 

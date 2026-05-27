@@ -1,0 +1,1457 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>NavOne · 스마트스토어 운영 자동화</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+:root {
+  --green: #03C75A;
+  --green-soft: #E6F9EE;
+  --green-ink: #038443;
+  --orange: #FF6F00;
+  --orange-soft: #FFF1E0;
+  --red: #E53935;
+  --red-soft: #FDECEC;
+  --ink: #1A1A1A;
+  --ink-2: #666666;
+  --ink-3: #999999;
+  --line: #ECEEF1;
+  --bg: #F7F8FA;
+  --white: #FFFFFF;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 28px rgba(0,0,0,0.08);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+input, textarea, select { font-family: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+
+/* ------- Layout ------- */
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+.main {
+  padding: 32px 40px 80px;
+  max-width: 1400px;
+  width: 100%;
+}
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.page-title { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 6px; }
+.page-sub { color: var(--ink-2); font-size: 14px; margin: 0; }
+
+/* ------- Sidebar ------- */
+.sidebar {
+  background: var(--white);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.sb-logo {
+  padding: 24px 22px 18px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.sb-logo .one { color: var(--green); }
+.sb-nav { flex: 1; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; }
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  width: 100%;
+  transition: background 120ms, color 120ms;
+}
+.sb-item:hover { background: #F4F6F8; color: var(--ink); }
+.sb-item.active { background: var(--green-soft); color: var(--green-ink); font-weight: 600; }
+.sb-item .ico {
+  width: 18px; height: 18px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.sb-item .badge-dot {
+  margin-left: auto;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--orange);
+}
+.sb-foot {
+  margin: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #F7F8FA;
+}
+.sb-foot .store {
+  font-size: 13px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px;
+}
+.sb-foot .store::before {
+  content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+  box-shadow: 0 0 0 3px rgba(3,199,90,.18);
+}
+.sb-foot .sub { font-size: 11.5px; color: var(--ink-2); margin-top: 8px; display: flex; justify-content: space-between; }
+.sb-foot .sub b { color: var(--ink); font-weight: 600; }
+
+/* ------- Card ------- */
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px;
+}
+.card.flat { box-shadow: none; border: 1px solid var(--line); }
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title .hint { font-size: 12px; font-weight: 500; color: var(--ink-3); }
+
+/* ------- Stat card ------- */
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.stat {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+  position: relative;
+  overflow: hidden;
+}
+.stat .label { color: var(--ink-2); font-size: 13px; font-weight: 500; }
+.stat .val { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin-top: 10px; }
+.stat .val .unit { font-size: 14px; color: var(--ink-2); font-weight: 500; margin-left: 4px; }
+.stat .delta { font-size: 12px; margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-weight: 600; }
+.delta.up { color: var(--green-ink); background: var(--green-soft); }
+.delta.down { color: var(--red); background: var(--red-soft); }
+.delta.warn { color: var(--orange); background: var(--orange-soft); }
+.stat .icon-pill {
+  position: absolute; top: 16px; right: 16px;
+  width: 36px; height: 36px; border-radius: 10px;
+  display: grid; place-items: center;
+  background: var(--green-soft); color: var(--green-ink);
+}
+.stat.alt .icon-pill { background: var(--orange-soft); color: var(--orange); }
+
+/* ------- Generic ------- */
+.row { display: flex; gap: 16px; }
+.col { display: flex; flex-direction: column; gap: 16px; }
+.grid-7-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+/* ------- Badge ------- */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.badge.green { background: var(--green-soft); color: var(--green-ink); }
+.badge.orange { background: var(--orange-soft); color: var(--orange); }
+.badge.red { background: var(--red-soft); color: var(--red); }
+.badge.gray { background: #F0F2F5; color: var(--ink-2); }
+
+/* ------- Button ------- */
+.btn {
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid transparent;
+  transition: all 120ms;
+}
+.btn.primary { background: var(--green); color: white; }
+.btn.primary:hover { background: #02B852; }
+.btn.ghost { background: white; color: var(--ink); border-color: var(--line); }
+.btn.ghost:hover { background: #F4F6F8; }
+.btn.danger { background: white; color: var(--red); border-color: #F5C6C6; }
+.btn.danger:hover { background: var(--red-soft); }
+.btn.sm { padding: 6px 12px; font-size: 12px; }
+
+/* ------- Toggle ------- */
+.toggle { width: 38px; height: 22px; background: #D8DCE2; border-radius: 999px; position: relative; transition: background 120ms; }
+.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: transform 160ms; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.toggle.on { background: var(--green); }
+.toggle.on::after { transform: translateX(16px); }
+
+/* ------- Input ------- */
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(3,199,90,.12); }
+.input.pw { letter-spacing: 0.15em; }
+textarea.input { resize: vertical; min-height: 80px; line-height: 1.5; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.field-hint { font-size: 11.5px; color: var(--ink-3); }
+
+/* ------- Table ------- */
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th, .tbl td { padding: 12px 14px; text-align: left; }
+.tbl th { font-size: 12px; font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--line); background: #FAFBFC; }
+.tbl tbody tr { border-bottom: 1px solid var(--line); }
+.tbl tbody tr:last-child { border-bottom: none; }
+.tbl tbody tr:hover { background: #FAFBFC; }
+.mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.strike { text-decoration: line-through; color: var(--ink-3); }
+
+/* ------- Chip / tag input ------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  background: #F0F2F5;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.chip button {
+  width: 16px; height: 16px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: #C9CED4; color: white; font-size: 11px; line-height: 1;
+}
+.chip button:hover { background: var(--ink-2); }
+.chip.green { background: var(--green-soft); color: var(--green-ink); }
+.chip.orange { background: var(--orange-soft); color: var(--orange); }
+
+/* ------- Segmented ------- */
+.seg { display: inline-flex; padding: 3px; background: #F0F2F5; border-radius: 10px; gap: 2px; }
+.seg button { padding: 6px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.seg button.active { background: white; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+/* ------- Activity feed item ------- */
+.act { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.act:last-child { border-bottom: none; }
+.act-ico { flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; }
+.act-ico.price { background: var(--green-soft); color: var(--green-ink); }
+.act-ico.review { background: var(--orange-soft); color: var(--orange); }
+.act-ico.talk { background: #EAF2FF; color: #2563EB; }
+.act-title { font-size: 13.5px; font-weight: 600; }
+.act-sub { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.act-time { margin-left: auto; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+
+/* ------- Misc ------- */
+.divider { height: 1px; background: var(--line); margin: 16px 0; }
+.kbd { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; background: #F0F2F5; padding: 2px 6px; border-radius: 4px; }
+.empty { color: var(--ink-3); font-size: 13px; padding: 32px; text-align: center; }
+.scroll-y { max-height: 420px; overflow-y: auto; }
+.scroll-y::-webkit-scrollbar { width: 8px; }
+.scroll-y::-webkit-scrollbar-thumb { background: #E0E3E8; border-radius: 4px; }
+
+/* Chrome ext status */
+.ext-status {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--green-soft);
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green-ink);
+}
+.ext-status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(3,199,90,.2); }
+.ext-status.off { background: #FDECEC; color: var(--red); }
+.ext-status.off .dot { background: var(--red); box-shadow: 0 0 0 4px rgba(229,57,53,.18); }
+
+/* Star rating */
+.stars { display: inline-flex; gap: 1px; }
+.stars svg { width: 14px; height: 14px; }
+.review-bar { width: 4px; border-radius: 3px; }
+.review-bar.s5 { background: var(--green); }
+.review-bar.s34 { background: var(--orange); }
+.review-bar.s12 { background: var(--red); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<script type="text/babel">
+/* global React */
+const { useState, useEffect, useMemo, useRef } = React;
+
+// ---------- Icons (stroke 1.6, 18px viewbox) ----------
+const Icon = ({ name, size = 18, color = "currentColor" }) => {
+  const props = {
+    width: size, height: size, viewBox: "0 0 24 24",
+    fill: "none", stroke: color, strokeWidth: 1.7,
+    strokeLinecap: "round", strokeLinejoin: "round"
+  };
+  const paths = {
+    home: <><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-6h4v6"/></>,
+    tag: <><path d="M3 12V4h8l10 10-8 8L3 12Z"/><circle cx="7.5" cy="7.5" r="1.2"/></>,
+    chat: <><path d="M21 12c0 4.4-4 8-9 8-1.2 0-2.4-.2-3.4-.6L3 21l1.6-4.4C3.6 15.2 3 13.7 3 12c0-4.4 4-8 9-8s9 3.6 9 8Z"/></>,
+    star: <><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6L12 17l-5.4 2.8 1-6L3.2 9.5l6.1-.9L12 3Z"/></>,
+    sparkles: <><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.8 2.8M15.2 15.2 18 18M6 18l2.8-2.8M15.2 8.8 18 6"/></>,
+    settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></>,
+    refresh: <><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></>,
+    play: <><polygon points="6 4 20 12 6 20 6 4"/></>,
+    pause: <><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></>,
+    plus: <><path d="M12 5v14M5 12h14"/></>,
+    x: <><path d="M6 6l12 12M18 6 6 18"/></>,
+    check: <><path d="m5 12 5 5L20 6"/></>,
+    bell: <><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8Z"/><path d="M10 21a2 2 0 0 0 4 0"/></>,
+    arrowDown: <><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></>,
+    arrowUp: <><path d="M12 19V5"/><path d="m6 11 6-6 6 6"/></>,
+    send: <><path d="m22 2-7 20-4-9-9-4 20-7Z"/></>,
+    chevR: <><path d="m9 6 6 6-6 6"/></>,
+    chrome: <><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M21 12h-7.5"/><path d="M5.2 7.5 9 13.5"/><path d="M9 18.5 13.5 11"/></>,
+    list: <><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></>,
+    user: <><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></>,
+    trend: <><path d="M3 17 9 11l4 4 8-8"/><path d="M14 7h7v7"/></>,
+    box: <><path d="m3.3 7 8.7 5 8.7-5"/><path d="M21 7v10l-9 5-9-5V7l9-5 9 5Z"/><path d="M12 12v10"/></>,
+    clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+    flame: <><path d="M12 22c4.4 0 8-3.4 8-7.7 0-3.3-2-5.6-3.5-7-.5-.5-1.5-.3-1.5.5 0 1.5-1 2.7-2 2.7-1.4 0-1.5-1.8-1-4 .2-.8-.7-1.4-1.4-1C8.5 6.5 5 9.2 5 14.3 5 18.6 8 22 12 22Z"/></>,
+  };
+  return <svg {...props} aria-hidden="true">{paths[name] || null}</svg>;
+};
+
+// ---------- Toggle ----------
+const Toggle = ({ on, onChange }) => (
+  <button className={"toggle " + (on ? "on" : "")} onClick={() => onChange(!on)} aria-pressed={on} />
+);
+
+// ---------- Stars ----------
+const Stars = ({ value = 0 }) => {
+  const color = value >= 5 ? "var(--green)" : value >= 3 ? "var(--orange)" : "var(--red)";
+  return (
+    <span className="stars" aria-label={`${value}점`}>
+      {[1,2,3,4,5].map(i => (
+        <svg key={i} viewBox="0 0 24 24" fill={i <= value ? color : "#E0E3E8"}>
+          <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6L12 17l-5.4 2.8 1-6L3.2 9.5l6.1-.9L12 3Z"/>
+        </svg>
+      ))}
+    </span>
+  );
+};
+
+// ---------- Sparkline ----------
+const Sparkline = ({ data, color = "var(--green)", height = 28, width = 84 }) => {
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const step = width / (data.length - 1);
+  const pts = data.map((v, i) => `${i * step},${height - ((v - min) / range) * height}`).join(" ");
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/>
+    </svg>
+  );
+};
+
+// ---------- StatCard ----------
+const StatCard = ({ label, value, unit, delta, deltaTone = "up", icon, alt }) => (
+  <div className={"stat" + (alt ? " alt" : "")}>
+    <div className="label">{label}</div>
+    <div className="val mono">{value}{unit && <span className="unit">{unit}</span>}</div>
+    {delta && <div className={"delta " + deltaTone}>
+      {deltaTone === "up" && <Icon name="arrowUp" size={11}/>}
+      {deltaTone === "down" && <Icon name="arrowDown" size={11}/>}
+      {delta}
+    </div>}
+    {icon && <div className="icon-pill"><Icon name={icon} size={18}/></div>}
+  </div>
+);
+
+// ---------- PageHeader ----------
+const PageHeader = ({ title, sub, right }) => (
+  <div className="page-header">
+    <div>
+      <h1 className="page-title">{title}</h1>
+      {sub && <p className="page-sub">{sub}</p>}
+    </div>
+    {right}
+  </div>
+);
+
+Object.assign(window, { Icon, Toggle, Stars, Sparkline, StatCard, PageHeader });
+</script>
+<script type="text/babel">
+/* global React, Icon */
+const Sidebar = ({ current, onNav }) => {
+  const items = [
+    { id: "dashboard", label: "대시보드", icon: "home" },
+    { id: "price", label: "가격 자동화", icon: "tag" },
+    { id: "reviews", label: "리뷰 답글", icon: "star", dot: true },
+    { id: "talktalk", label: "톡톡 AI 응답", icon: "chat", dot: true },
+    { id: "optimize", label: "상품명 최적화", icon: "sparkles" },
+    { id: "settings", label: "설정", icon: "settings" },
+  ];
+  return (
+    <aside className="sidebar">
+      <div className="sb-logo">Nav<span className="one">One</span></div>
+      <nav className="sb-nav">
+        {items.map(it => (
+          <button
+            key={it.id}
+            className={"sb-item" + (current === it.id ? " active" : "")}
+            onClick={() => onNav(it.id)}
+          >
+            <span className="ico"><Icon name={it.icon} size={17}/></span>
+            <span>{it.label}</span>
+            {it.dot && current !== it.id && <span className="badge-dot"/>}
+          </button>
+        ))}
+      </nav>
+      <div className="sb-foot">
+        <div className="store">달콤한과일가게</div>
+        <div className="sub">
+          <span>플랜</span>
+          <b>프로 · 23일 남음</b>
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+window.Sidebar = Sidebar;
+</script>
+<script type="text/babel">
+/* global React, Icon, StatCard, PageHeader, Sparkline */
+const { useState: useStateD, useMemo: useMemoD } = React;
+
+const DashboardPage = () => {
+  // Last 7 days price change history
+  const chart = [
+    { d: "5/14", changed: 18, skipped: 6, error: 1 },
+    { d: "5/15", changed: 22, skipped: 4, error: 0 },
+    { d: "5/16", changed: 15, skipped: 9, error: 2 },
+    { d: "5/17", changed: 26, skipped: 5, error: 0 },
+    { d: "5/18", changed: 19, skipped: 7, error: 1 },
+    { d: "5/19", changed: 24, skipped: 6, error: 0 },
+    { d: "5/20", changed: 23, skipped: 4, error: 1 },
+  ];
+  const maxY = 32;
+
+  const activity = [
+    { t: "price", title: "샤인머스캣 1kg 가격 변경", sub: "24,900원 → 23,400원 · 경쟁사 -1,500원", time: "방금 전", tone: "green" },
+    { t: "review", title: "AI 답글 등록 · 별 5점", sub: "\"포장 정말 꼼꼼하게 와서…\"", time: "2분 전", tone: "orange" },
+    { t: "talk", title: "톡톡 자동 응답", sub: "배송 일정 문의 · AI 응답 완료", time: "6분 전", tone: "blue" },
+    { t: "price", title: "유기농 사과 5kg 가격 스킵", sub: "최소 마진율 미만으로 변경 보류", time: "12분 전", tone: "gray" },
+    { t: "review", title: "AI 답글 등록 · 별 3점", sub: "\"맛은 괜찮은데 크기가…\"", time: "18분 전", tone: "orange" },
+    { t: "talk", title: "판매자 전달", sub: "교환 요청 · 자동 응답 어려움", time: "24분 전", tone: "alert" },
+    { t: "price", title: "방울토마토 2kg 가격 변경", sub: "12,400원 → 11,900원", time: "31분 전", tone: "green" },
+    { t: "review", title: "AI 답글 등록 · 별 5점", sub: "\"재구매 의사 100%\"", time: "42분 전", tone: "orange" },
+  ];
+
+  const W = 640, H = 220, padL = 32, padB = 28, padT = 12, padR = 16;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const xStep = innerW / (chart.length - 1);
+  const yFor = v => padT + innerH - (v / maxY) * innerH;
+  const xFor = i => padL + i * xStep;
+  const line = (key) => chart.map((p, i) => `${xFor(i)},${yFor(p[key])}`).join(" ");
+
+  return (
+    <>
+      <PageHeader
+        title="대시보드"
+        sub="오늘 NavOne이 처리한 운영 업무를 한눈에 확인하세요."
+        right={
+          <div className="ext-status">
+            <span className="dot"/> 크롬 확장 · 연결됨
+          </div>
+        }
+      />
+
+      <div className="stat-grid">
+        <StatCard label="오늘 가격 변경" value="23" unit="건" delta="+4 vs 어제" deltaTone="up" icon="tag" />
+        <StatCard label="리뷰 답글 작성" value="17" unit="건" delta="+6 vs 어제" deltaTone="up" icon="star" alt />
+        <StatCard label="톡톡 자동 응답" value="42" unit="건" delta="-2 vs 어제" deltaTone="down" icon="chat" />
+        <StatCard label="매출 변화율" value="+12.3" unit="%" delta="주간 평균 대비" deltaTone="up" icon="trend" />
+      </div>
+
+      <div className="grid-7-3">
+        <div className="card">
+          <div className="card-title">
+            가격 변경 이력 <span className="hint">최근 7일</span>
+          </div>
+          <div style={{display: "flex", gap: 18, alignItems: "flex-start"}}>
+            <svg viewBox={`0 0 ${W} ${H}`} style={{width: "100%", maxWidth: W, height: "auto"}}>
+              {/* y grid */}
+              {[0, 8, 16, 24, 32].map(v => (
+                <g key={v}>
+                  <line x1={padL} y1={yFor(v)} x2={W - padR} y2={yFor(v)} stroke="#ECEEF1" strokeWidth="1"/>
+                  <text x={padL - 8} y={yFor(v) + 4} fontSize="10" fill="#999" textAnchor="end">{v}</text>
+                </g>
+              ))}
+              {/* x labels */}
+              {chart.map((p, i) => (
+                <text key={p.d} x={xFor(i)} y={H - 8} fontSize="10" fill="#999" textAnchor="middle">{p.d}</text>
+              ))}
+              {/* area for changed */}
+              <polyline
+                points={line("changed")}
+                fill="none" stroke="#03C75A" strokeWidth="2.2"
+                strokeLinejoin="round" strokeLinecap="round"
+              />
+              <polyline
+                points={line("skipped")}
+                fill="none" stroke="#FF6F00" strokeWidth="2" strokeDasharray="0"
+                strokeLinejoin="round" strokeLinecap="round"
+              />
+              <polyline
+                points={line("error")}
+                fill="none" stroke="#E53935" strokeWidth="1.6"
+                strokeLinejoin="round" strokeLinecap="round"
+              />
+              {/* dots */}
+              {chart.map((p, i) => (
+                <g key={"dots" + i}>
+                  <circle cx={xFor(i)} cy={yFor(p.changed)} r="3.5" fill="white" stroke="#03C75A" strokeWidth="2"/>
+                  <circle cx={xFor(i)} cy={yFor(p.skipped)} r="2.8" fill="white" stroke="#FF6F00" strokeWidth="1.8"/>
+                </g>
+              ))}
+            </svg>
+          </div>
+          <div style={{display: "flex", gap: 18, fontSize: 12, color: "var(--ink-2)", marginTop: 8}}>
+            <span style={{display: "inline-flex", alignItems: "center", gap: 6}}><span style={{width: 10, height: 10, background: "#03C75A", borderRadius: 2, display: "inline-block"}}/>변경</span>
+            <span style={{display: "inline-flex", alignItems: "center", gap: 6}}><span style={{width: 10, height: 10, background: "#FF6F00", borderRadius: 2, display: "inline-block"}}/>스킵</span>
+            <span style={{display: "inline-flex", alignItems: "center", gap: 6}}><span style={{width: 10, height: 10, background: "#E53935", borderRadius: 2, display: "inline-block"}}/>오류</span>
+          </div>
+        </div>
+
+        <div className="col">
+          <div className="card">
+            <div className="card-title">자동화 요약</div>
+            <div style={{display: "flex", flexDirection: "column", gap: 14}}>
+              <SummaryRow icon="tag" label="가격 자동화" status="실행 중" tone="green" sub="다음 실행 14:30" />
+              <SummaryRow icon="star" label="리뷰 답글" status="대기" tone="gray" sub="미답글 8건" />
+              <SummaryRow icon="chat" label="톡톡 AI" status="실행 중" tone="green" sub="응답률 94.2%" />
+              <SummaryRow icon="sparkles" label="상품명 최적화" status="예약" tone="orange" sub="내일 03:00" />
+            </div>
+          </div>
+          <div className="card flat" style={{padding: 16}}>
+            <div style={{fontSize: 12, color: "var(--ink-2)", marginBottom: 6}}>이번 달 절감 시간 (추정)</div>
+            <div style={{fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em"}} className="mono">
+              48<span style={{fontSize: 13, color: "var(--ink-2)", fontWeight: 500, marginLeft: 4}}>시간 32분</span>
+            </div>
+            <Sparkline data={[12, 18, 15, 22, 26, 24, 32, 30, 38, 42, 45, 48]} width={220} height={36}/>
+          </div>
+        </div>
+      </div>
+
+      <div style={{height: 16}}/>
+
+      <div className="card">
+        <div className="card-title">
+          최근 활동 <span className="hint">실시간 업데이트</span>
+        </div>
+        <div className="scroll-y">
+          {activity.map((a, i) => (
+            <div className="act" key={i}>
+              <div className={"act-ico " + (a.t === "price" ? "price" : a.t === "review" ? "review" : "talk")}>
+                <Icon name={a.t === "price" ? "tag" : a.t === "review" ? "star" : "chat"} size={15}/>
+              </div>
+              <div style={{flex: 1, minWidth: 0}}>
+                <div className="act-title">{a.title}</div>
+                <div className="act-sub">{a.sub}</div>
+              </div>
+              {a.tone === "alert" && <span className="badge orange" style={{alignSelf: "center"}}>판매자 확인</span>}
+              <div className="act-time">{a.time}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+};
+
+const SummaryRow = ({ icon, label, status, tone, sub }) => (
+  <div style={{display: "flex", alignItems: "center", gap: 12}}>
+    <div className={"act-ico " + (icon === "tag" ? "price" : icon === "star" ? "review" : icon === "chat" ? "talk" : "review")}>
+      <Icon name={icon} size={15}/>
+    </div>
+    <div style={{flex: 1}}>
+      <div style={{fontSize: 13, fontWeight: 600}}>{label}</div>
+      <div style={{fontSize: 11.5, color: "var(--ink-3)"}}>{sub}</div>
+    </div>
+    <span className={"badge " + tone}>{status}</span>
+  </div>
+);
+
+window.DashboardPage = DashboardPage;
+</script>
+<script type="text/babel">
+/* global React, Icon, Toggle, StatCard, PageHeader */
+const { useState: useStateP } = React;
+
+const PricePage = () => {
+  const [running, setRunning] = useStateP(true);
+  const [undercut, setUndercut] = useStateP(500);
+  const [minMargin, setMinMargin] = useStateP(18);
+  const [testMode, setTestMode] = useStateP(false);
+  const [excludeList, setExcludeList] = useStateP([
+    "프리미엄과수원", "초록마트", "정직한농장", "베스트프루트", "할인왕"
+  ]);
+  const [newExclude, setNewExclude] = useStateP("");
+
+  const history = [
+    { date: "5/20 14:12", name: "샤인머스캣 1kg 특품", before: 24900, after: 23400, comp: 22900, status: "변경" },
+    { date: "5/20 14:12", name: "유기농 사과 5kg 가정용", before: 38000, after: 38000, comp: 36500, status: "스킵" },
+    { date: "5/20 14:11", name: "방울토마토 2kg 대저", before: 12400, after: 11900, comp: 11400, status: "변경" },
+    { date: "5/20 14:11", name: "제주 한라봉 3kg", before: 28900, after: 27500, comp: 27000, status: "변경" },
+    { date: "5/20 14:10", name: "성주 참외 2.5kg", before: 19800, after: 19800, comp: 18900, status: "오류" },
+    { date: "5/20 14:10", name: "친환경 바나나 1송이", before: 4900, after: 4500, comp: 4000, status: "변경" },
+    { date: "5/20 13:42", name: "거창 사과 3kg 부사", before: 22400, after: 21900, comp: 21400, status: "변경" },
+    { date: "5/20 13:42", name: "유기농 블루베리 500g", before: 14900, after: 14900, comp: 13900, status: "스킵" },
+  ];
+
+  const addExclude = () => {
+    const v = newExclude.trim();
+    if (!v) return;
+    setExcludeList([...excludeList, v]);
+    setNewExclude("");
+  };
+
+  return (
+    <>
+      <PageHeader
+        title="가격 자동화"
+        sub="경쟁사 최저가를 추적해 자동으로 가격을 조정합니다."
+        right={
+          <div style={{display: "flex", gap: 10, alignItems: "center"}}>
+            <button className="btn danger">
+              <Icon name="refresh" size={14}/> 가격 복구
+            </button>
+            <button className={"btn " + (running ? "ghost" : "primary")} onClick={() => setRunning(!running)}>
+              <Icon name={running ? "pause" : "play"} size={14}/> {running ? "일시정지" : "실행"}
+            </button>
+          </div>
+        }
+      />
+
+      <div className="grid-3" style={{marginBottom: 16}}>
+        <div className="card" style={{display: "flex", alignItems: "center", gap: 14}}>
+          <div className="act-ico price" style={{width: 40, height: 40}}>
+            <Icon name={running ? "play" : "pause"} size={18}/>
+          </div>
+          <div>
+            <div style={{fontSize: 12, color: "var(--ink-2)"}}>실행 상태</div>
+            <div style={{fontSize: 17, fontWeight: 700, marginTop: 2}}>
+              {running ? "실행 중" : "일시정지"}
+            </div>
+          </div>
+        </div>
+        <div className="card" style={{display: "flex", alignItems: "center", gap: 14}}>
+          <div className="act-ico talk" style={{width: 40, height: 40}}>
+            <Icon name="clock" size={18}/>
+          </div>
+          <div>
+            <div style={{fontSize: 12, color: "var(--ink-2)"}}>마지막 실행</div>
+            <div style={{fontSize: 17, fontWeight: 700, marginTop: 2}}>2분 전 · 14:12</div>
+          </div>
+        </div>
+        <div className="card" style={{display: "flex", alignItems: "center", gap: 14}}>
+          <div className="act-ico review" style={{width: 40, height: 40}}>
+            <Icon name="list" size={18}/>
+          </div>
+          <div>
+            <div style={{fontSize: 12, color: "var(--ink-2)"}}>오늘 처리</div>
+            <div style={{fontSize: 17, fontWeight: 700, marginTop: 2}}>변경 18 · 스킵 4 · 오류 1</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid-2" style={{marginBottom: 16}}>
+        <div className="card">
+          <div className="card-title">자동화 설정</div>
+          <div style={{display: "flex", flexDirection: "column", gap: 16}}>
+            <div className="field">
+              <label className="field-label">언더컷 금액</label>
+              <div style={{display: "flex", gap: 8, alignItems: "center"}}>
+                <input
+                  className="input mono"
+                  type="number"
+                  value={undercut}
+                  onChange={e => setUndercut(parseInt(e.target.value || 0))}
+                  style={{maxWidth: 160}}
+                />
+                <span style={{fontSize: 13, color: "var(--ink-2)"}}>원 (경쟁 최저가보다 낮게)</span>
+              </div>
+            </div>
+            <div className="field">
+              <label className="field-label">최소 마진율</label>
+              <div style={{display: "flex", gap: 8, alignItems: "center"}}>
+                <input
+                  className="input mono"
+                  type="number"
+                  value={minMargin}
+                  onChange={e => setMinMargin(parseInt(e.target.value || 0))}
+                  style={{maxWidth: 160}}
+                />
+                <span style={{fontSize: 13, color: "var(--ink-2)"}}>% 이하면 변경 보류</span>
+              </div>
+            </div>
+            <div className="field" style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>
+              <div>
+                <div className="field-label">테스트 모드</div>
+                <div className="field-hint">실제 가격을 바꾸지 않고 변경 내역만 기록합니다.</div>
+              </div>
+              <Toggle on={testMode} onChange={setTestMode}/>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">
+            경쟁사 제외 목록
+            <span className="hint">{excludeList.length}곳</span>
+          </div>
+          <div style={{display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14, minHeight: 40}}>
+            {excludeList.map((s, i) => (
+              <span key={i} className="chip">
+                {s}
+                <button onClick={() => setExcludeList(excludeList.filter((_, j) => j !== i))}><Icon name="x" size={10}/></button>
+              </span>
+            ))}
+          </div>
+          <div style={{display: "flex", gap: 8}}>
+            <input
+              className="input"
+              placeholder="제외할 판매처 이름 입력"
+              value={newExclude}
+              onChange={e => setNewExclude(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addExclude()}
+            />
+            <button className="btn primary" onClick={addExclude}><Icon name="plus" size={14}/> 추가</button>
+          </div>
+          <div className="field-hint" style={{marginTop: 10}}>
+            여기 등록된 판매처는 경쟁 최저가 계산에서 제외됩니다.
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">
+          가격 변경 이력
+          <span className="hint">최근 8건</span>
+        </div>
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th style={{width: 130}}>일시</th>
+              <th>상품명</th>
+              <th style={{width: 110, textAlign: "right"}}>변경 전</th>
+              <th style={{width: 110, textAlign: "right"}}>변경 후</th>
+              <th style={{width: 110, textAlign: "right"}}>경쟁 최저가</th>
+              <th style={{width: 80, textAlign: "center"}}>상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            {history.map((r, i) => (
+              <tr key={i}>
+                <td className="mono" style={{color: "var(--ink-2)"}}>{r.date}</td>
+                <td style={{fontWeight: 500}}>{r.name}</td>
+                <td className={"mono " + (r.status === "변경" ? "strike" : "")} style={{textAlign: "right"}}>{r.before.toLocaleString()}원</td>
+                <td className="mono" style={{textAlign: "right", fontWeight: 600, color: r.status === "변경" ? "var(--green-ink)" : "var(--ink)"}}>
+                  {r.after.toLocaleString()}원
+                </td>
+                <td className="mono" style={{textAlign: "right", color: "var(--ink-2)"}}>{r.comp.toLocaleString()}원</td>
+                <td style={{textAlign: "center"}}>
+                  <span className={"badge " + (r.status === "변경" ? "green" : r.status === "스킵" ? "orange" : "red")}>{r.status}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+};
+
+window.PricePage = PricePage;
+</script>
+<script type="text/babel">
+/* global React, Icon, Stars, PageHeader */
+const { useState: useStateR } = React;
+
+const ReviewsPage = () => {
+  const [tone, setTone] = useStateR("친근");
+  const [customPrompt, setCustomPrompt] = useStateR("우리 스토어는 산지 직송 과일을 판매하는 곳입니다. 신선도와 포장에 자부심이 있습니다.");
+  const [reviews, setReviews] = useStateR([
+    {
+      id: 1, product: "샤인머스캣 1kg 특품", rating: 5, time: "12분 전",
+      text: "포장 정말 꼼꼼하게 와서 한 알도 안 터졌어요! 당도도 진짜 높고 알도 굵어요. 다음에 또 주문할게요.",
+      reply: "고객님, 따뜻한 후기 정말 감사드립니다 :) 한 알 한 알 정성껏 골라 포장하는 게 저희의 자부심이에요. 다음번에도 가장 좋은 머스캣으로 보내드릴게요!"
+    },
+    {
+      id: 2, product: "유기농 사과 5kg 가정용", rating: 3, time: "34분 전",
+      text: "맛은 괜찮은데 크기가 생각보다 작은 게 좀 섞여 있었어요. 가정용이라 이해는 가지만 다음엔 좀 더 균일했으면 좋겠습니다.",
+      reply: "소중한 의견 주셔서 감사합니다. 가정용 상품은 크기 편차가 있을 수 있는 점 양해 부탁드려요. 선별 기준을 더 다듬어 균일한 상품을 보내드릴 수 있도록 노력하겠습니다."
+    },
+    {
+      id: 3, product: "방울토마토 2kg 대저", rating: 5, time: "1시간 전",
+      text: "달고 신선해요. 아이가 너무 잘 먹어서 또 주문했어요. 배송도 빠르고 최고!",
+      reply: "아이가 잘 먹는다니 저희도 정말 기쁘네요! 매일 새벽에 따서 그날 바로 출고하고 있어요. 늘 가장 신선한 토마토로 보답드리겠습니다."
+    },
+    {
+      id: 4, product: "성주 참외 2.5kg", rating: 2, time: "2시간 전",
+      text: "받자마자 한두 개 무른 게 있었어요. 환불 부탁드립니다.",
+      reply: "불편을 드려 진심으로 죄송합니다. 무른 상품은 바로 환불 도와드리겠습니다. 톡톡으로 상품 사진 보내주시면 즉시 처리해드릴게요."
+    },
+    {
+      id: 5, product: "제주 한라봉 3kg", rating: 4, time: "3시간 전",
+      text: "맛있어요. 한라봉 향이 진하고 새콤달콤 좋네요. 별 하나 뺀 건 일부 크기가 작아서요.",
+      reply: "한라봉 좋아해 주셔서 감사합니다! 크기 편차 부분은 앞으로 더 세심히 선별해서 보내드릴게요."
+    },
+  ]);
+
+  const [submitted, setSubmitted] = useStateR(new Set());
+
+  const tones = ["친근", "정중", "간결"];
+
+  return (
+    <>
+      <PageHeader
+        title="리뷰 답글"
+        sub="AI가 작성한 답글을 검토하고 한 번에 등록하세요."
+      />
+
+      <div className="stat-grid" style={{gridTemplateColumns: "repeat(3, 1fr)"}}>
+        <div className="stat">
+          <div className="label">미답글 리뷰</div>
+          <div className="val mono">8<span className="unit">건</span></div>
+          <div className="delta warn">대기 중</div>
+          <div className="icon-pill"><Icon name="bell" size={18}/></div>
+        </div>
+        <div className="stat alt">
+          <div className="label">오늘 답글 작성</div>
+          <div className="val mono">17<span className="unit">건</span></div>
+          <div className="delta up"><Icon name="arrowUp" size={11}/> +6 vs 어제</div>
+          <div className="icon-pill"><Icon name="check" size={18}/></div>
+        </div>
+        <div className="stat">
+          <div className="label">평균 별점</div>
+          <div className="val mono">4.6<span className="unit">/ 5.0</span></div>
+          <div className="delta up">최근 7일</div>
+          <div className="icon-pill"><Icon name="star" size={18}/></div>
+        </div>
+      </div>
+
+      <div className="grid-2" style={{marginBottom: 16}}>
+        <div className="card">
+          <div className="card-title">AI 답글 톤</div>
+          <div className="seg">
+            {tones.map(t => (
+              <button key={t} className={tone === t ? "active" : ""} onClick={() => setTone(t)}>
+                {t}
+              </button>
+            ))}
+          </div>
+          <div className="field-hint" style={{marginTop: 10}}>
+            {tone === "친근" && "고객을 가까운 친구처럼 대하는 따뜻한 어투를 사용합니다."}
+            {tone === "정중" && "정중하고 격식 있는 표현으로 신뢰감을 줍니다."}
+            {tone === "간결" && "꼭 필요한 말만 짧고 깔끔하게 전달합니다."}
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-title">커스텀 프롬프트</div>
+          <textarea
+            className="input"
+            rows="3"
+            value={customPrompt}
+            onChange={e => setCustomPrompt(e.target.value)}
+            placeholder="우리 스토어는 ___를 파는 곳입니다."
+          />
+          <div className="field-hint" style={{marginTop: 6}}>AI가 답글을 생성할 때 참고하는 스토어 컨텍스트입니다.</div>
+        </div>
+      </div>
+
+      <div className="col">
+        {reviews.map(r => {
+          const tone = r.rating >= 5 ? "s5" : r.rating >= 3 ? "s34" : "s12";
+          const done = submitted.has(r.id);
+          return (
+            <div key={r.id} className="card" style={{display: "flex", gap: 16, padding: 0, overflow: "hidden"}}>
+              <div className={"review-bar " + tone}/>
+              <div style={{flex: 1, padding: "20px 22px 20px 6px"}}>
+                <div style={{display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap"}}>
+                  <Stars value={r.rating}/>
+                  <span style={{fontSize: 13, fontWeight: 600}}>{r.product}</span>
+                  <span style={{fontSize: 11.5, color: "var(--ink-3)", marginLeft: "auto"}}>{r.time}</span>
+                </div>
+                <p style={{margin: "10px 0 14px", fontSize: 13.5, lineHeight: 1.55, color: "var(--ink)"}}>{r.text}</p>
+                <div style={{
+                  background: "#F7F8FA",
+                  borderRadius: 12,
+                  padding: "12px 14px",
+                  borderLeft: "3px solid var(--green)"
+                }}>
+                  <div style={{fontSize: 11.5, fontWeight: 600, color: "var(--green-ink)", marginBottom: 6, display: "flex", alignItems: "center", gap: 4}}>
+                    <Icon name="sparkles" size={12}/> AI 생성 답글
+                  </div>
+                  <div style={{fontSize: 13, lineHeight: 1.55, color: "var(--ink)"}}>{r.reply}</div>
+                </div>
+                <div style={{display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end"}}>
+                  <button className="btn ghost sm">
+                    <Icon name="refresh" size={12}/> 다시 생성
+                  </button>
+                  <button className="btn ghost sm">수정</button>
+                  <button
+                    className={"btn sm " + (done ? "ghost" : "primary")}
+                    onClick={() => {
+                      const next = new Set(submitted);
+                      next.add(r.id);
+                      setSubmitted(next);
+                    }}
+                    disabled={done}
+                  >
+                    {done ? <><Icon name="check" size={12}/> 등록됨</> : "등록"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+};
+
+window.ReviewsPage = ReviewsPage;
+</script>
+<script type="text/babel">
+/* global React, Icon, PageHeader */
+const { useState: useStateT } = React;
+
+const TalkTalkPage = () => {
+  const [info, setInfo] = useStateT({
+    delivery: "오후 2시 이전 주문 시 당일 출고, 일반적으로 1~2일 내 도착합니다.",
+    returns: "신선식품 특성상 단순 변심 반품은 어렵습니다. 상품 하자 시 사진과 함께 톡톡으로 문의 부탁드립니다.",
+    exchange: "수령 후 24시간 이내 사진 첨부 시 교환 가능합니다.",
+    notes: "주말/공휴일은 출고가 어렵습니다. 새벽배송은 제공하지 않습니다."
+  });
+
+  const chats = [
+    { time: "14:23", customer: "샤인머스캣 오늘 주문하면 언제 받을 수 있어요?", reply: "오늘 오후 2시 이전 주문건은 당일 출고되어 보통 내일~모레 도착합니다. 새벽배송은 운영하지 않는 점 참고 부탁드려요.", status: "auto" },
+    { time: "14:18", customer: "사과 5kg 환불하고 싶어요", reply: "환불 관련 문의는 판매자가 직접 확인해드릴 수 있도록 전달드렸습니다. 잠시만 기다려 주세요.", status: "forward" },
+    { time: "13:54", customer: "방울토마토 당일 출고 되나요?", reply: "네 :) 오후 2시 전 주문이시면 오늘 출고됩니다. 결제 완료 기준이라 결제까지 마쳐주세요!", status: "auto" },
+    { time: "13:42", customer: "선물용으로 포장 가능한가요?", reply: "기본 포장도 깔끔하게 나가지만, 선물용 박스 포장이 필요하시면 옵션에서 선물포장(+2,000원)을 선택해주세요.", status: "auto" },
+    { time: "13:21", customer: "교환은 어떻게 하나요?", reply: "수령 후 24시간 이내에 상품 사진을 톡톡으로 보내주시면 빠르게 교환 도와드립니다!", status: "auto" },
+    { time: "12:58", customer: "법인 카드로 결제했는데 세금계산서 발행돼나요?", reply: "세금계산서 발행 관련해서는 판매자가 직접 확인해드리겠습니다. 곧 답변드릴게요.", status: "forward" },
+    { time: "12:30", customer: "한라봉 입고 언제 또 되나요?", reply: "현재 한라봉은 시즌 막바지로 재입고가 미정입니다. 자세한 일정은 판매자가 확인 후 안내드릴게요.", status: "forward" },
+    { time: "11:48", customer: "참외 박스에 흠집난 것 있나요?", reply: "박스 외관은 운송 중 약간의 눌림이 있을 수 있지만, 상품 자체에는 영향이 없도록 이중 포장해 보내드립니다.", status: "auto" },
+  ];
+
+  return (
+    <>
+      <PageHeader
+        title="톡톡 AI 응답"
+        sub="자주 묻는 문의에 AI가 자동으로 응답하고, 어려운 건은 판매자에게 전달합니다."
+      />
+
+      <div className="stat-grid" style={{gridTemplateColumns: "repeat(3, 1fr)"}}>
+        <div className="stat">
+          <div className="label">오늘 자동 응답</div>
+          <div className="val mono">42<span className="unit">건</span></div>
+          <div className="delta up">응답률 94.2%</div>
+          <div className="icon-pill"><Icon name="chat" size={18}/></div>
+        </div>
+        <div className="stat alt">
+          <div className="label">판매자 전달</div>
+          <div className="val mono">3<span className="unit">건</span></div>
+          <div className="delta warn">확인 필요</div>
+          <div className="icon-pill"><Icon name="user" size={18}/></div>
+        </div>
+        <div className="stat">
+          <div className="label">평균 응답 시간</div>
+          <div className="val mono">8<span className="unit">초</span></div>
+          <div className="delta up">즉시 응답</div>
+          <div className="icon-pill"><Icon name="clock" size={18}/></div>
+        </div>
+      </div>
+
+      <div className="card" style={{marginBottom: 16}}>
+        <div className="card-title">
+          스토어 기본 정보
+          <span className="hint">AI가 답변에 활용합니다</span>
+        </div>
+        <div className="grid-2">
+          <div className="field">
+            <label className="field-label">배송 소요일</label>
+            <textarea className="input" rows="2" value={info.delivery} onChange={e => setInfo({...info, delivery: e.target.value})}/>
+          </div>
+          <div className="field">
+            <label className="field-label">반품 정책</label>
+            <textarea className="input" rows="2" value={info.returns} onChange={e => setInfo({...info, returns: e.target.value})}/>
+          </div>
+          <div className="field">
+            <label className="field-label">교환 가능 기간</label>
+            <textarea className="input" rows="2" value={info.exchange} onChange={e => setInfo({...info, exchange: e.target.value})}/>
+          </div>
+          <div className="field">
+            <label className="field-label">주요 안내사항</label>
+            <textarea className="input" rows="2" value={info.notes} onChange={e => setInfo({...info, notes: e.target.value})}/>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">
+          상담 이력
+          <span className="hint">최근 8건</span>
+        </div>
+        <div style={{display: "flex", flexDirection: "column", gap: 10}}>
+          {chats.map((c, i) => {
+            const fwd = c.status === "forward";
+            return (
+              <div key={i} style={{
+                display: "grid",
+                gridTemplateColumns: "70px 1fr",
+                gap: 14,
+                padding: "14px 16px",
+                borderRadius: 12,
+                background: fwd ? "var(--orange-soft)" : "#F7F8FA",
+                border: fwd ? "1px solid #FFD9B0" : "1px solid transparent",
+              }}>
+                <div style={{fontSize: 12, color: "var(--ink-2)", paddingTop: 2}} className="mono">{c.time}</div>
+                <div>
+                  <div style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 8}}>
+                    <div className="act-ico" style={{width: 26, height: 26, background: "white", color: "var(--ink-2)", border: "1px solid var(--line)"}}>
+                      <Icon name="user" size={13}/>
+                    </div>
+                    <span style={{fontSize: 12.5, color: "var(--ink)", flex: 1}}>{c.customer}</span>
+                  </div>
+                  <div style={{display: "flex", alignItems: "flex-start", gap: 8}}>
+                    <div className="act-ico" style={{width: 26, height: 26, background: fwd ? "#FFE4C7" : "var(--green-soft)", color: fwd ? "var(--orange)" : "var(--green-ink)"}}>
+                      <Icon name={fwd ? "user" : "sparkles"} size={13}/>
+                    </div>
+                    <div style={{flex: 1}}>
+                      <div style={{fontSize: 13, color: "var(--ink)", lineHeight: 1.5}}>{c.reply}</div>
+                      <span className={"badge " + (fwd ? "orange" : "green")} style={{marginTop: 6}}>
+                        {fwd ? "판매자 전달" : "자동 응답"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+};
+
+window.TalkTalkPage = TalkTalkPage;
+</script>
+<script type="text/babel">
+/* global React, Icon, Toggle, PageHeader */
+const { useState: useStateO } = React;
+
+const OptimizePage = () => {
+  const [frequency, setFrequency] = useStateO("주 2~3회");
+  const [autoApply, setAutoApply] = useStateO(false);
+  const [applied, setApplied] = useStateO(new Set());
+
+  const trendingKeywords = [
+    "당도선별", "산지직송", "새벽수확", "GAP인증", "가정용",
+    "선물용", "당일출고", "고당도", "특품", "샤인머스캣",
+    "유기농", "친환경", "프리미엄", "대용량", "소포장"
+  ];
+
+  const products = [
+    {
+      id: 1, current: "샤인머스캣 1kg 특품",
+      ai: "[당도선별] 샤인머스캣 1kg 특품 산지직송 고당도 프리미엄",
+      added: ["당도선별", "산지직송", "고당도", "프리미엄"]
+    },
+    {
+      id: 2, current: "유기농 사과 5kg 가정용",
+      ai: "GAP인증 유기농 사과 5kg 가정용 새벽수확 친환경 부사",
+      added: ["GAP인증", "새벽수확", "친환경", "부사"]
+    },
+    {
+      id: 3, current: "방울토마토 2kg 대저",
+      ai: "[당일출고] 대저 방울토마토 2kg 산지직송 짭짤이 고당도",
+      added: ["당일출고", "산지직송", "짭짤이", "고당도"]
+    },
+    {
+      id: 4, current: "제주 한라봉 3kg",
+      ai: "제주 한라봉 3kg 선물용 노지재배 프리미엄 1+",
+      added: ["선물용", "노지재배", "프리미엄", "1+"]
+    },
+    {
+      id: 5, current: "성주 참외 2.5kg",
+      ai: "[새벽수확] 성주 참외 2.5kg 가정용 GAP인증 당도선별",
+      added: ["새벽수확", "가정용", "GAP인증", "당도선별"]
+    },
+  ];
+
+  return (
+    <>
+      <PageHeader
+        title="상품명 최적화"
+        sub="실시간 검색 트렌드를 반영해 상품명을 자동으로 다듬습니다."
+      />
+
+      <div className="stat-grid" style={{gridTemplateColumns: "repeat(3, 1fr)"}}>
+        <div className="stat">
+          <div className="label">최근 7일 최적화</div>
+          <div className="val mono">34<span className="unit">건</span></div>
+          <div className="delta up">노출 +18.2%</div>
+          <div className="icon-pill"><Icon name="sparkles" size={18}/></div>
+        </div>
+        <div className="stat alt">
+          <div className="label">다음 예정</div>
+          <div className="val mono">내일 03:00</div>
+          <div className="delta warn">자동 실행</div>
+          <div className="icon-pill"><Icon name="clock" size={18}/></div>
+        </div>
+        <div className="stat">
+          <div className="label">검토 대기</div>
+          <div className="val mono">5<span className="unit">건</span></div>
+          <div className="delta up">자동 적용 OFF</div>
+          <div className="icon-pill"><Icon name="list" size={18}/></div>
+        </div>
+      </div>
+
+      <div className="grid-2" style={{marginBottom: 16}}>
+        <div className="card">
+          <div className="card-title">최적화 설정</div>
+          <div style={{display: "flex", flexDirection: "column", gap: 16}}>
+            <div className="field">
+              <label className="field-label">변경 주기</label>
+              <div className="seg">
+                {["하루 1회", "주 2~3회", "주 1회"].map(f => (
+                  <button key={f} className={frequency === f ? "active" : ""} onClick={() => setFrequency(f)}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="field" style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>
+              <div>
+                <div className="field-label">자동 적용</div>
+                <div className="field-hint">검토 없이 추천 상품명을 바로 반영합니다.</div>
+              </div>
+              <Toggle on={autoApply} onChange={setAutoApply}/>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">
+            <span style={{display: "inline-flex", alignItems: "center", gap: 6}}>
+              <Icon name="flame" size={14} color="var(--orange)"/>
+              인기 검색어
+            </span>
+            <span className="hint">실시간 트렌드</span>
+          </div>
+          <div style={{display: "flex", flexWrap: "wrap", gap: 6}}>
+            {trendingKeywords.map((kw, i) => (
+              <span
+                key={kw}
+                className={"chip " + (i < 5 ? "orange" : i < 10 ? "green" : "")}
+                style={{fontSize: 12}}
+              >
+                {i < 3 && <span style={{fontWeight: 700, marginRight: 2}}>{i + 1}</span>}
+                {kw}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">
+          최적화 추천
+          <span className="hint">{products.length}건 검토 대기</span>
+        </div>
+        <div style={{display: "flex", flexDirection: "column", gap: 12}}>
+          {products.map(p => {
+            const done = applied.has(p.id);
+            return (
+              <div key={p.id} style={{
+                padding: "16px 18px",
+                background: "#F7F8FA",
+                borderRadius: 12,
+                border: "1px solid var(--line)",
+              }}>
+                <div style={{display: "grid", gridTemplateColumns: "120px 1fr 1fr auto", gap: 16, alignItems: "center"}}>
+                  <div style={{
+                    width: 90, height: 64,
+                    borderRadius: 8,
+                    background: "repeating-linear-gradient(45deg, #ECEEF1 0 6px, #F4F6F8 6px 12px)",
+                    display: "grid", placeItems: "center",
+                    fontSize: 9, color: "var(--ink-3)", fontFamily: "monospace"
+                  }}>
+                    상품 이미지
+                  </div>
+                  <div>
+                    <div style={{fontSize: 11.5, color: "var(--ink-3)", marginBottom: 4}}>현재 상품명</div>
+                    <div style={{fontSize: 13.5, color: "var(--ink-2)"}}>{p.current}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize: 11.5, color: "var(--green-ink)", marginBottom: 4, display: "flex", alignItems: "center", gap: 4}}>
+                      <Icon name="sparkles" size={11}/> AI 추천
+                    </div>
+                    <div style={{fontSize: 13.5, fontWeight: 600, color: "var(--ink)"}}>{p.ai}</div>
+                    <div style={{display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6}}>
+                      {p.added.map(k => (
+                        <span key={k} className="chip green" style={{padding: "2px 8px", fontSize: 11}}>
+                          + {k}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    className={"btn sm " + (done ? "ghost" : "primary")}
+                    onClick={() => {
+                      const next = new Set(applied);
+                      next.add(p.id);
+                      setApplied(next);
+                    }}
+                    disabled={done}
+                  >
+                    {done ? <><Icon name="check" size={12}/> 적용됨</> : "적용"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+};
+
+window.OptimizePage = OptimizePage;
+</script>
+<script type="text/babel">
+/* global React, Icon, PageHeader */
+const { useState: useStateS } = React;
+
+const SettingsPage = () => {
+  const [appId, setAppId] = useStateS("nv_app_8f4e2a1b9c");
+  const [secret, setSecret] = useStateS("sk_live_3a8c9d2e7f1b4a6c8e0d");
+  const [storeName, setStoreName] = useStateS("달콤한과일가게");
+  const [category, setCategory] = useStateS("식품 > 신선식품 > 과일");
+  const [botToken, setBotToken] = useStateS("7842913::AAH-bL2kZ9mNqRsT");
+  const [chatId, setChatId] = useStateS("482917365");
+  const [license, setLicense] = useStateS("NVO-PRO-2026-K8M3-9X4P");
+  const [pageInfo, setPageInfo] = useStateS(
+    "저희는 산지에서 직접 수확한 신선한 제철 과일을 새벽 출고로 판매합니다. " +
+    "주요 상품은 샤인머스캣, 사과, 방울토마토, 한라봉, 참외 등이며 GAP 인증 농가와 직거래합니다. " +
+    "고객 만족을 위해 무른 상품 발견 시 24시간 이내 무조건 교환/환불 도와드립니다."
+  );
+  const [secretVisible, setSecretVisible] = useStateS(false);
+  const [telegramSent, setTelegramSent] = useStateS(false);
+
+  return (
+    <>
+      <PageHeader
+        title="설정"
+        sub="NavOne 동작에 필요한 계정과 알림, 라이선스를 관리합니다."
+      />
+
+      <div className="grid-2">
+        <div className="col">
+          <div className="card">
+            <div className="card-title">
+              네이버 Commerce API
+              <span className="badge green">연결됨</span>
+            </div>
+            <div className="field">
+              <label className="field-label">애플리케이션 ID</label>
+              <input className="input mono" value={appId} onChange={e => setAppId(e.target.value)}/>
+            </div>
+            <div className="field" style={{marginTop: 12}}>
+              <label className="field-label">시크릿</label>
+              <div style={{display: "flex", gap: 8}}>
+                <input
+                  className={"input mono " + (secretVisible ? "" : "pw")}
+                  type={secretVisible ? "text" : "password"}
+                  value={secret}
+                  onChange={e => setSecret(e.target.value)}
+                />
+                <button className="btn ghost sm" onClick={() => setSecretVisible(!secretVisible)}>
+                  {secretVisible ? "숨김" : "표시"}
+                </button>
+              </div>
+              <div className="field-hint">시크릿은 NavOne 서버에 암호화되어 저장됩니다.</div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-title">스토어 정보</div>
+            <div className="field">
+              <label className="field-label">스토어명</label>
+              <input className="input" value={storeName} onChange={e => setStoreName(e.target.value)}/>
+            </div>
+            <div className="field" style={{marginTop: 12}}>
+              <label className="field-label">카테고리</label>
+              <input className="input" value={category} onChange={e => setCategory(e.target.value)}/>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-title">
+              상세페이지 정보
+              <span className="hint">톡톡 AI 참고용</span>
+            </div>
+            <textarea
+              className="input"
+              rows="6"
+              value={pageInfo}
+              onChange={e => setPageInfo(e.target.value)}
+              placeholder="스토어와 주요 상품에 대한 설명을 자세히 적어주세요. 톡톡 AI가 답변할 때 참고합니다."
+            />
+            <div className="field-hint" style={{marginTop: 8}}>
+              현재 {pageInfo.length}자 입력됨 · 권장 200자 이상
+            </div>
+          </div>
+        </div>
+
+        <div className="col">
+          <div className="card">
+            <div className="card-title">
+              텔레그램 알림
+              <span className="badge green">활성</span>
+            </div>
+            <div className="field">
+              <label className="field-label">봇 토큰</label>
+              <input className="input mono pw" type="password" value={botToken} onChange={e => setBotToken(e.target.value)}/>
+            </div>
+            <div className="field" style={{marginTop: 12}}>
+              <label className="field-label">Chat ID</label>
+              <input className="input mono" value={chatId} onChange={e => setChatId(e.target.value)}/>
+            </div>
+            <div style={{display: "flex", gap: 8, marginTop: 14, alignItems: "center"}}>
+              <button
+                className="btn primary"
+                onClick={() => {
+                  setTelegramSent(true);
+                  setTimeout(() => setTelegramSent(false), 2400);
+                }}
+              >
+                <Icon name="send" size={12}/> 테스트 발송
+              </button>
+              {telegramSent && (
+                <span className="badge green">
+                  <Icon name="check" size={11}/> 전송 완료
+                </span>
+              )}
+            </div>
+            <div className="field-hint" style={{marginTop: 12}}>
+              가격 변경 오류, 판매자 전달 건이 발생하면 즉시 알림을 받습니다.
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-title">라이선스</div>
+            <div className="field">
+              <label className="field-label">라이선스 키</label>
+              <input className="input mono" value={license} onChange={e => setLicense(e.target.value)}/>
+            </div>
+            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14}}>
+              <div style={{padding: "12px 14px", background: "var(--green-soft)", borderRadius: 10}}>
+                <div style={{fontSize: 11.5, color: "var(--green-ink)", fontWeight: 600}}>상태</div>
+                <div style={{fontSize: 15, fontWeight: 700, color: "var(--green-ink)", marginTop: 4}}>활성</div>
+              </div>
+              <div style={{padding: "12px 14px", background: "#F7F8FA", borderRadius: 10}}>
+                <div style={{fontSize: 11.5, color: "var(--ink-2)", fontWeight: 600}}>만료일</div>
+                <div style={{fontSize: 15, fontWeight: 700, marginTop: 4}} className="mono">2026.06.12</div>
+              </div>
+            </div>
+            <div className="field-hint" style={{marginTop: 12}}>
+              현재 플랜: <b style={{color: "var(--ink)"}}>NavOne 프로</b> · 무제한 상품 · 모든 자동화 모듈 사용 가능
+            </div>
+            <div style={{display: "flex", gap: 8, marginTop: 14}}>
+              <button className="btn ghost sm">결제 관리</button>
+              <button className="btn primary sm">플랜 변경</button>
+            </div>
+          </div>
+
+          <div className="card flat" style={{background: "#FAFBFC"}}>
+            <div style={{fontSize: 12, color: "var(--ink-2)", fontWeight: 600, marginBottom: 6}}>NavOne 정보</div>
+            <div className="field-hint" style={{lineHeight: 1.7}}>
+              크롬 확장 버전 <span className="mono" style={{color: "var(--ink)"}}>v1.4.2</span> · 대시보드 <span className="mono" style={{color: "var(--ink)"}}>v0.9.7</span>
+              <br/>
+              문의: support@navone.kr · 가이드 문서 보기
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+window.SettingsPage = SettingsPage;
+</script>
+<script type="text/babel">
+/* global React, ReactDOM, Sidebar, DashboardPage, PricePage, ReviewsPage, TalkTalkPage, OptimizePage, SettingsPage */
+const { useState } = React;
+
+const App = () => {
+  const [page, setPage] = useState("dashboard");
+
+  const pages = {
+    dashboard: <DashboardPage/>,
+    price: <PricePage/>,
+    reviews: <ReviewsPage/>,
+    talktalk: <TalkTalkPage/>,
+    optimize: <OptimizePage/>,
+    settings: <SettingsPage/>,
+  };
+
+  const labels = {
+    dashboard: "01 대시보드",
+    price: "02 가격 자동화",
+    reviews: "03 리뷰 답글",
+    talktalk: "04 톡톡 AI 응답",
+    optimize: "05 상품명 최적화",
+    settings: "06 설정",
+  };
+
+  return (
+    <div className="app">
+      <Sidebar current={page} onNav={setPage}/>
+      <main className="main" data-screen-label={labels[page]} key={page}>
+        {pages[page]}
+      </main>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body></html>

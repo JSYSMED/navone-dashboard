@@ -8,6 +8,8 @@ const ITEMS = [
   { to: "/reviews", label: "리뷰 답글", icon: "star", dot: true },
   { to: "/talktalk", label: "톡톡 AI 응답", icon: "chat", dot: true },
   { to: "/optimize", label: "상품명 최적화", icon: "sparkles" },
+  { to: "/settlement", label: "정산 현황", icon: "trend" },
+  { to: "/margin", label: "마진율 랭킹", icon: "flame" },
   { to: "/settings", label: "설정", icon: "settings" },
 ];
 

@@ -2,7 +2,7 @@
 // 공통 인증/포맷은 기존 ../../lib/api 를 재사용한다 (수정 없이 import만).
 import { getLicenseKey } from "../../lib/api";
 
-const API_BASE = "http://1.234.91.111:3000";
+const API_BASE = "https://pjhbless0831.cafe24.com";
 
 async function getJson(url) {
   const res = await fetch(url);

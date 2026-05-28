@@ -1,5 +1,5 @@
 // NavOne 대시보드 — API 호출 헬퍼
-const API_BASE = "http://1.234.91.111:3000";
+const API_BASE = "https://pjhbless0831.cafe24.com";
 const LICENSE_KEY = "navone_license_key";
 const SETTINGS_KEY = "navone_settings";
 // 미설정 시 사용하는 기본 테스트 라이선스 키.

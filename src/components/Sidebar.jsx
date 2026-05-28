@@ -8,8 +8,17 @@ const ITEMS = [
   { to: "/reviews", label: "리뷰 답글", icon: "star", dot: true },
   { to: "/talktalk", label: "톡톡 AI 응답", icon: "chat", dot: true },
   { to: "/optimize", label: "상품명 최적화", icon: "sparkles" },
+  { to: "/qa", label: "Q&A AI답글", icon: "help" },
+  { to: "/product-ai", label: "AI 상품분석", icon: "cpu" },
   { to: "/settlement", label: "정산 현황", icon: "trend" },
   { to: "/margin", label: "마진율 랭킹", icon: "flame" },
+  { to: "/ad", label: "광고효율", icon: "megaphone" },
+  { to: "/orders", label: "주문/발주", icon: "cart" },
+  { to: "/claims", label: "클레임", icon: "refresh" },
+  { to: "/inquiry", label: "CS 문의", icon: "chat" },
+  { to: "/penalty", label: "페널티", icon: "shield" },
+  { to: "/group", label: "그룹상품", icon: "users" },
+  { to: "/auto", label: "자동모드", icon: "play" },
   { to: "/settings", label: "설정", icon: "settings" },
 ];
 

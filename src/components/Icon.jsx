@@ -30,6 +30,13 @@ export default function Icon({ name, size = 18, color = "currentColor" }) {
     box: <><path d="m3.3 7 8.7 5 8.7-5" /><path d="M21 7v10l-9 5-9-5V7l9-5 9 5Z" /><path d="M12 12v10" /></>,
     clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
     flame: <><path d="M12 22c4.4 0 8-3.4 8-7.7 0-3.3-2-5.6-3.5-7-.5-.5-1.5-.3-1.5.5 0 1.5-1 2.7-2 2.7-1.4 0-1.5-1.8-1-4 .2-.8-.7-1.4-1.4-1C8.5 6.5 5 9.2 5 14.3 5 18.6 8 22 12 22Z" /></>,
+    alert: <><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4M12 17h.01" /></>,
+    shield: <><path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3Z" /><path d="m9 12 2 2 4-4" /></>,
+    megaphone: <><path d="m3 11 15-6v14l-15-6v-2Z" /><path d="M3 11v2a3 3 0 0 0 3 3h1" /><path d="M9 19a2 2 0 0 0 4 0" /></>,
+    cpu: <><rect x="6" y="6" width="12" height="12" rx="2" /><rect x="9" y="9" width="6" height="6" rx="1" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></>,
+    help: <><circle cx="12" cy="12" r="9" /><path d="M9.2 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.8 2.5-2.8 2.5" /><path d="M12 17h.01" /></>,
+    users: <><circle cx="9" cy="8" r="3.4" /><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" /><path d="M16 5.2a3.4 3.4 0 0 1 0 5.6" /><path d="M18 14.5c2 .8 3.5 2.6 3.5 5" /></>,
+    cart: <><circle cx="9" cy="20" r="1.4" /><circle cx="18" cy="20" r="1.4" /><path d="M2 3h2.2l2 12.4a1.6 1.6 0 0 0 1.6 1.3h9.4a1.6 1.6 0 0 0 1.6-1.3L20.5 7H5.5" /></>,
   };
   return <svg {...props} aria-hidden="true">{paths[name] || null}</svg>;
 }

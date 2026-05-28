@@ -1,11 +1,13 @@
 // NavOne 대시보드 — API 호출 헬퍼
-const API_BASE = "https://navone-server-production.up.railway.app";
+const API_BASE = "http://1.234.91.111:3000";
 const LICENSE_KEY = "navone_license_key";
 const SETTINGS_KEY = "navone_settings";
+// 미설정 시 사용하는 기본 테스트 라이선스 키.
+const DEFAULT_LICENSE = "NAVONE-TEST-001";
 
 // ===== licenseKey (localStorage) =====
 export function getLicenseKey() {
-  return localStorage.getItem(LICENSE_KEY) || "";
+  return localStorage.getItem(LICENSE_KEY) || DEFAULT_LICENSE;
 }
 export function setLicenseKey(key) {
   localStorage.setItem(LICENSE_KEY, key || "");
@@ -117,4 +119,39 @@ export function formatPrice(n) {
 export function truncate(s, n = 40) {
   if (!s) return "-";
   return s.length > n ? s.slice(0, n) + "…" : s;
+}
+
+// ===== 운영 모듈 엔드포인트 공통 GET =====
+// 응답 형태: { success, data } | { success:false, error } | { error: "..." }
+async function apiGet(path, params = {}) {
+  const lk = getLicenseKey();
+  const q = new URLSearchParams({ licenseKey: lk, ...params });
+  const res = await fetch(`${API_BASE}/api/${path}?${q.toString()}`);
+  let data = {};
+  try { data = await res.json(); } catch { /* ignore */ }
+  const errMsg = typeof data.error === "string" ? data.error : data?.error?.message;
+  if (!res.ok || data.success === false || errMsg) {
+    throw new Error(errMsg || `요청 실패 (${res.status})`);
+  }
+  return data;
+}
+
+export const fetchClaims        = () => apiGet("claim/pending").then((d) => d.data);
+export const fetchOrders        = () => apiGet("order/pending").then((d) => d.data);
+export const fetchPenaltyScan   = () => apiGet("penalty/risk-scan").then((d) => d.data);
+export const fetchInquiries     = () => apiGet("inquiry/list").then((d) => d.data);
+export const fetchGroupSuggest  = () => apiGet("group/suggest").then((d) => d.data);
+export const fetchAdEfficiency  = () => apiGet("ad/efficiency").then((d) => d.data);
+export const fetchQaList        = () => apiGet("qa/list").then((d) => d.data);
+export const analyzeProduct     = (originProductNo) =>
+  apiGet("product-ai/analyze", { originProductNo }).then((d) => d.data);
+
+// 금액/숫자 포맷 (won은 formatPrice의 별칭, 페이지에서 자주 쓰임)
+export function won(n) {
+  return formatPrice(n);
+}
+export function pct(n) {
+  if (n == null || n === "") return "-";
+  const num = Number(n);
+  return isNaN(num) ? String(n) : `${num.toFixed(1)}%`;
 }

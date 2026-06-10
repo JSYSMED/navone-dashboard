@@ -1,137 +1,157 @@
-import { useEffect, useState } from "react";
-import Icon from "../components/Icon";
-import StatCard from "../components/StatCard";
-import PageHeader from "../components/PageHeader";
-import { fetchGroupSuggest, won } from "../lib/api";
+import { useState, useEffect } from "react";
+import NvIcon from "../components/NvIcon";
+import { NvPageHead, NvBanner, NvEmpty } from "../components/atoms";
+import { fetchGroupSuggest } from "../lib/api";
 
-const FALLBACK = {
-  suggestions: [
-    {
-      groupName: "프리미엄 과일 선물세트",
-      reason: "함께 구매 비율이 높은 고당도 상품을 묶어 객단가를 높입니다.",
-      expectedUplift: "객단가 +18%",
-      products: [
-        { name: "샤인머스캣 1kg 특품", price: 24900 },
-        { name: "제주 한라봉 3kg", price: 32000 },
-      ],
-    },
-    {
-      groupName: "가정용 알뜰 과일 묶음",
-      reason: "재구매가 잦은 일상 과일을 묶어 장바구니 이탈을 줄입니다.",
-      expectedUplift: "전환율 +9%",
-      products: [
-        { name: "유기농 사과 5kg 가정용", price: 26900 },
-        { name: "방울토마토 2kg 대저", price: 13900 },
-      ],
-    },
-    {
-      groupName: "여름 새콤 세트",
-      reason: "시즌 검색량 상승 키워드 기반 추천 조합입니다.",
-      expectedUplift: "노출 +12%",
-      products: [
-        { name: "성주 참외 2.5kg", price: 19900 },
-        { name: "방울토마토 2kg 대저", price: 13900 },
-      ],
-    },
-  ],
-};
+const won = (n) => (Number(n) || 0).toLocaleString() + "원";
 
-const g = (o, keys, d = "") => {
-  for (const k of keys) if (o[k] != null && o[k] !== "") return o[k];
-  return d;
-};
+// 모듈 레벨 캐시 — 페이지를 나갔다 다시 들어와도 직전 추천 결과를 유지한다.
+// (브라우저 새로고침 시에는 비워짐. "다시 스캔"을 누르면 강제로 새로 파싱.)
+let _groupCache = null;
 
 export default function Group() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [fallback, setFallback] = useState(false);
+  const [data, setData] = useState(_groupCache || { scanned: 0, count: 0, candidates: [] });
+  const [status, setStatus] = useState(_groupCache ? (_groupCache.candidates.length ? "ok" : "empty") : "loading");
 
   const load = async () => {
-    setLoading(true); setError(""); setFallback(false);
+    setStatus("loading");
     try {
       const d = await fetchGroupSuggest();
-      const list = d?.suggestions || d?.groups || [];
-      if (!list.length) { setData(FALLBACK); setFallback(true); }
-      else setData(d);
-    } catch (e) {
-      setError(e.message);
-      setData(FALLBACK);
-      setFallback(true);
-    } finally {
-      setLoading(false);
+      const candidates = d?.candidates || [];
+      const next = { scanned: d?.scanned || 0, count: d?.count ?? candidates.length, candidates };
+      _groupCache = next;                 // 결과 캐시에 저장
+      setData(next);
+      setStatus(candidates.length ? "ok" : "empty");
+    } catch {
+      setStatus("error");
     }
   };
 
-  useEffect(() => { load(); }, []);
-
-  const suggestions = data?.suggestions || data?.groups || [];
-  const totalProducts = suggestions.reduce((s, r) => s + ((r.products || r.items || []).length), 0);
+  // 캐시가 있으면 재파싱하지 않고 그대로 보여준다. 없을 때만(첫 진입) 스캔.
+  useEffect(() => {
+    if (_groupCache) {
+      setData(_groupCache);
+      setStatus(_groupCache.candidates.length ? "ok" : "empty");
+    } else {
+      load();
+    }
+  }, []);
 
   return (
-    <>
-      <PageHeader
+    <div className="nv-page">
+      <NvPageHead
         title="그룹상품 추천"
-        sub="함께 팔기 좋은 상품 조합을 추천해 객단가와 전환율을 높입니다."
-        right={
-          <button className="btn ghost" onClick={load} disabled={loading}>
-            <Icon name="refresh" size={14} /> 새로고침
+        sub="같은 제품인데 따로 등록된 상품들이에요. 묶으면 가격비교가 한 카드로 합쳐져 노출에 유리해요."
+        actions={
+          <button className="nv-btn ghost sm" onClick={load} disabled={status === "loading"}>
+            <NvIcon name="refresh" size={14} /> 다시 스캔
           </button>
         }
       />
 
-      {fallback && (
-        <div className="card flat" style={{ padding: 12, marginBottom: 12, color: "var(--orange)", background: "var(--orange-soft)" }}>
-          실시간 추천을 불러오지 못해 예시 데이터를 표시합니다. {error && `(${error})`}
+      {status === "loading" && (
+        <div className="nv-card" style={{ textAlign: "center", padding: "44px 24px", color: "var(--ink-2)" }}>
+          상품을 스캔하고 묶을 후보를 찾는 중…
         </div>
       )}
 
-      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-        <StatCard label="추천 묶음" value={loading ? "-" : suggestions.length} unit="개" icon="users" />
-        <StatCard label="포함 상품" value={loading ? "-" : totalProducts} unit="개" icon="box" alt />
-      </div>
+      {status === "error" && (
+        <NvEmpty
+          icon="bolt"
+          tone="red"
+          title="불러오지 못했어요"
+          desc="잠시 후 ‘다시 스캔’을 눌러주세요. 설정의 라이선스 키도 확인해 주세요."
+        />
+      )}
 
-      {loading ? (
-        <div className="card empty"><div className="spinner" />불러오는 중…</div>
-      ) : suggestions.length === 0 ? (
-        <div className="card empty">추천할 그룹 상품이 없습니다.</div>
-      ) : (
-        <div className="grid-2">
-          {suggestions.map((s, i) => {
-            const products = s.products || s.items || [];
-            const sum = products.reduce((acc, p) => acc + (Number(p.price ?? p.salePrice) || 0), 0);
-            return (
-              <div key={g(s, ["groupName", "name"], i)} className="card">
-                <div className="card-title">
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <Icon name="users" size={15} color="var(--green)" /> {g(s, ["groupName", "name"], "추천 묶음")}
-                  </span>
-                  {(s.expectedUplift || s.uplift) && (
-                    <span className="badge green">{g(s, ["expectedUplift", "uplift"])}</span>
-                  )}
+      {status === "empty" && (
+        <NvEmpty
+          icon="check"
+          title="묶을 그룹이 없어요"
+          desc={`상품 ${data.scanned.toLocaleString()}개를 살펴봤지만 지금은 묶을 만한 후보가 없네요.`}
+        />
+      )}
+
+      {status === "ok" && (
+        <>
+          <NvBanner tone="green" icon="sparkles">
+            상품 {data.scanned.toLocaleString()}개 중 묶을 수 있는 그룹 <b>{data.count}개</b>를 찾았어요.
+          </NvBanner>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 16 }}>
+            {data.candidates.map((g, gi) => (
+              <div className="nv-card" key={gi}>
+                <div className="nv-card-h">
+                  <div>
+                    <div className="nv-card-t">{g.groupName || `그룹 ${gi + 1}`}</div>
+                    {g.reason && <div className="nv-card-hint">{g.reason}</div>}
+                  </div>
+                  <span className="nv-pill green">{g.products?.length || 0}개 묶기</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginBottom: 14, lineHeight: 1.55 }}>
-                  {g(s, ["reason", "description"], "")}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {products.map((p, j) => (
-                    <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "#F7F8FA", borderRadius: 10 }}>
-                      <span style={{ fontSize: 13, fontWeight: 500 }}>{g(p, ["name", "productName"], "상품")}</span>
-                      <span className="mono" style={{ fontSize: 13, color: "var(--ink-2)" }}>{won(p.price ?? p.salePrice)}</span>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 14 }}>
+                  {(g.products || []).map((p, pi) => (
+                    <div
+                      key={pi}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 11,
+                        border: "1px solid var(--line)",
+                        borderRadius: 12,
+                        padding: 10,
+                        width: "calc(50% - 6px)",
+                        minWidth: 240,
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 54,
+                          height: 54,
+                          borderRadius: 10,
+                          flexShrink: 0,
+                          overflow: "hidden",
+                          background: "var(--line)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "var(--ink-4)",
+                        }}
+                      >
+                        {p.image ? (
+                          <img src={p.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <NvIcon name="box" size={20} />
+                        )}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            lineHeight: 1.4,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                          }}
+                        >
+                          {p.name}
+                        </div>
+                        <div className="mono" style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 3 }}>
+                          {won(p.salePrice)}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
-                {sum > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
-                    <span style={{ fontSize: 12.5, color: "var(--ink-2)", fontWeight: 600 }}>묶음 합계</span>
-                    <span className="mono" style={{ fontWeight: 700, color: "var(--green-ink)" }}>{won(sum)}</span>
-                  </div>
-                )}
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        </>
       )}
-    </>
+    </div>
   );
 }

@@ -1,72 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import NvIcon from "../components/NvIcon";
-import { NvPageHead, NvSeg, NvBanner, NvStat, NvStatRow, NvEmpty } from "../components/atoms";
-import { fetchProductDiagnosis, analyzeProduct } from "../lib/api";
-
-// 서버 bulk-analyze 응답 → 화면 형식 매핑
-// scores.{nameSeo,attributeCompleteness,aitems}는 {score,max,details} 중첩 객체
-function mapDiag(products) {
-  const num = v => { const n = Math.round(Number(v)); return Number.isFinite(n) ? n : 0; };
-  return (products || []).map((p, i) => ({
-    id: p.originProductNo || i,
-    originProductNo: p.originProductNo,
-    name: p.productName || "—",
-    cat: p.leafCategoryId ? "카테고리 " + p.leafCategoryId : "",
-    score: num(p.scores?.overall),
-    n: num(p.scores?.nameSeo?.score),
-    a: num(p.scores?.attributeCompleteness?.score),
-    ai: num(p.scores?.aitems?.score),
-    nameDetails: p.scores?.nameSeo?.details || [],
-    aiDetails: p.scores?.aitems?.details || [],
-    missingAttributes: p.scores?.attributeCompleteness?.missing || p.missingAttributes || [],
-    rec: null,
-  }));
-}
+import { NvPageHead, NvSeg, NvBanner, NvStat, NvStatRow } from "../components/atoms";
 
 export default function Optimize() {
   const [tab, setTab] = useState("diagnose");
   const [scoreMax, setScoreMax] = useState(70);
-  const [openId, setOpenId] = useState(null);
+  const [openId, setOpenId] = useState(2);
 
-  // 진단 데이터 (API)
-  const [diag, setDiag] = useState([]);
-  const [summary, setSummary] = useState({ count: 0, averageOverall: 0, needsImprovement: 0 });
-  const [status, setStatus] = useState("loading"); // loading|ok|empty|error
-  const [recCache, setRecCache] = useState({}); // originProductNo -> {recommendedName, tags}
-  const [recLoading, setRecLoading] = useState(null);
-
-  const loadDiag = async () => {
-    setStatus("loading");
-    try {
-      const d = await fetchProductDiagnosis(50);
-      const mapped = mapDiag(d?.products);
-      setSummary({
-        count: d?.count ?? mapped.length,
-        averageOverall: Math.round(d?.summary?.averageOverall ?? 0),
-        needsImprovement: d?.summary?.needsImprovement ?? mapped.filter(x => x.score < 60).length,
-      });
-      if (mapped.length) { setDiag(mapped); setStatus("ok"); }
-      else { setDiag([]); setStatus("empty"); }
-    } catch { setStatus("error"); }
-  };
-  useEffect(() => { loadDiag(); }, []);
-
-  // 행 펼칠 때 AI 추천 lazy 로드
-  const toggleRow = async (d) => {
-    const next = openId === d.id ? null : d.id;
-    setOpenId(next);
-    if (next != null && d.originProductNo && !recCache[d.originProductNo]) {
-      setRecLoading(d.originProductNo);
-      try {
-        const r = await analyzeProduct(d.originProductNo);
-        const ai = r?.ai || r || {};
-        setRecCache(c => ({ ...c, [d.originProductNo]: { recommendedName: ai.recommendedName || "", tags: ai.keywordSuggestions || ai.tags || [] } }));
-      } catch { setRecCache(c => ({ ...c, [d.originProductNo]: { recommendedName: "", tags: [], error: true } })); }
-      setRecLoading(null);
-    }
-  };
-
-  const dims = [["상품명 (SEO)", summary.count ? Math.round(diag.reduce((s, d) => s + d.n, 0) / diag.length) : 0, "이름 길이·키워드 수·브랜드 조합"], ["속성 완성도", summary.count ? Math.round(diag.reduce((s, d) => s + d.a, 0) / diag.length) : 0, "제조사·브랜드·모델·태그 입력 여부"], ["AiTEMS 노출 재료", summary.count ? Math.round(diag.reduce((s, d) => s + d.ai, 0) / diag.length) : 0, "이미지 장수·상세설명 길이·태그 수"]];
+  const diag = [
+    { id: 1, name: "샤인머스캣 1kg 특품", cat: "과일", score: 71, n: 100, a: 80, ai: 32, detail: { name: [], attr: ["판매자 태그(검색 키워드) 없음"], ai: ["이미지 1장 — 4장 이상 권장", "판매자 태그 0개 — 5개 이상 권장", "상세설명 67자 — 300자 이상 권장"] }, rec: { name: "[당도선별] 샤인머스캣 1kg 특품 산지직송 고당도 선물용", tags: ["당도선별", "산지직송", "고당도", "선물용포장", "제철과일"] } },
+    { id: 2, name: "유기농 사과 5kg 가정용", cat: "과일", score: 54, n: 71, a: 65, ai: 25, detail: { name: ["상품명이 짧음(13자) — 20~50자 권장", "키워드 수 3개 — 4~12개 권장"], attr: ["제조사명 없음", "판매자 태그 없음"], ai: ["이미지 1장 — 4장 이상 권장", "상세설명 17자 — 300자 이상 권장"] }, rec: { name: "GAP인증 유기농 사과 5kg 가정용 새벽수확 친환경 부사 아삭", tags: ["GAP인증", "새벽수확", "친환경사과", "부사", "가정용과일"] } },
+    { id: 3, name: "제주 한라봉 3kg", cat: "과일", score: 87, n: 100, a: 100, ai: 60, detail: { name: [], attr: [], ai: ["이미지 1장 — 4장 이상 권장", "상세설명 33자 — 300자 이상 권장"] }, rec: { name: "제주 한라봉 3kg 선물용 노지재배 새콤달콤 고당도", tags: ["제주한라봉", "선물용", "노지재배", "고당도"] } },
+    { id: 4, name: "성주 참외 2.5kg", cat: "과일", score: 63, n: 88, a: 65, ai: 30, detail: { name: ["상품명이 짧음(11자) — 20~50자 권장"], attr: ["제조사명 없음", "판매자 태그 없음"], ai: ["이미지 1장 — 4장 이상 권장", "상세설명 24자 — 300자 이상 권장"] }, rec: { name: "[새벽수확] 성주 참외 2.5kg 가정용 GAP인증 당도선별 노란참외", tags: ["성주참외", "새벽수확", "GAP인증", "당도선별", "노란참외"] } },
+    { id: 5, name: "방울토마토 2kg 대저", cat: "채소", score: 80, n: 100, a: 80, ai: 41, detail: { name: [], attr: ["판매자 태그 없음"], ai: ["이미지 2장 — 4장 이상 권장", "상세설명 40자 — 300자 이상 권장"] }, rec: { name: "[당일출고] 대저 방울토마토 2kg 산지직송 짭짤이 고당도", tags: ["대저토마토", "짭짤이", "산지직송", "당일출고", "방울토마토"] } },
+  ];
+  const dims = [["상품명 (SEO)", 92, "이름 길이·키워드 수·브랜드 조합"], ["속성 완성도", 68, "제조사·브랜드·모델·태그 입력 여부"], ["AiTEMS 노출 재료", 41, "이미지 장수·상세설명 길이·태그 수"]];
   const sCol = s => s >= 80 ? "var(--green-ink)" : s >= 60 ? "var(--amber-ink)" : "var(--red)";
   const shown = (scoreMax >= 100 ? diag.slice() : diag.filter(d => d.score < scoreMax)).sort((a, b) => a.score - b.score);
   const enrich = [
@@ -88,21 +36,14 @@ export default function Optimize() {
       <NvSeg style={{ marginBottom: 20 }} value={tab} onChange={setTab} tabs={[["diagnose", "① 진단"], ["enrich", "② AI 보강"], ["refresh", "③ 월간 갱신"]]} />
 
       {tab === "diagnose" && (
-        status === "loading" ? (
-          <div style={{ padding: "60px 0", textAlign: "center", color: "var(--ink-3)", fontSize: 13 }}>상품을 진단하는 중…</div>
-        ) : status === "error" ? (
-          <NvEmpty icon="bell" title="상품 진단을 불러오지 못했어요" desc="잠시 후 다시 시도해 주세요." tone="amber" />
-        ) : status === "empty" ? (
-          <NvEmpty icon="box" title="진단할 상품이 없어요" desc="판매중인 상품이 등록되면 노출 점수를 진단해 드려요." tone="violet" />
-        ) : (
         <>
           <NvStatRow cols={3}>
-            <NvStat label="전체 진단 상품" value={summary.count.toLocaleString()} unit="개" icon="box" tone="violet" sub={`상위 ${diag.length}개 분석`} subTone="up" />
-            <NvStat label="평균 노출 점수" value={summary.averageOverall} unit="점" icon="trend" tone="green" sub="100점 만점" subTone="up" />
-            <NvStat label="60점 미만" value={summary.needsImprovement} unit="개" icon="bell" tone="amber" sub="개선 시 노출 상승 여지" subTone="warn" />
+            <NvStat label="전체 진단 상품" value="1,000" unit="개" icon="box" tone="violet" sub="풀스캔 완료" subTone="up" />
+            <NvStat label="평균 노출 점수" value="79" unit="점" icon="trend" tone="green" sub="100점 만점" subTone="up" />
+            <NvStat label="70점 미만" value="284" unit="개" icon="bell" tone="amber" sub="개선 시 노출 상승 여지" subTone="warn" />
           </NvStatRow>
           <div className="nv-card" style={{ marginBottom: 16 }}>
-            <div className="nv-card-h"><h3 className="nv-card-t">영역별 평균 점수</h3><span className="nv-card-hint">분석 상품 기준</span></div>
+            <div className="nv-card-h"><h3 className="nv-card-t">영역별 평균 점수</h3><span className="nv-card-hint">전 상품 기준</span></div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {dims.map(([l, sc, desc]) => (
                 <div key={l}>
@@ -115,11 +56,11 @@ export default function Optimize() {
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: 16 }}><NvBanner tone="amber" icon="bell"><b>AiTEMS 노출 재료 점수가 낮으면 추천 노출에서 밀립니다.</b> 네이버 AI는 이미지·상세설명·태그로 상품을 읽어요. → ② AI 보강에서 채울 수 있어요.</NvBanner></div>
+            <div style={{ marginTop: 16 }}><NvBanner tone="amber" icon="bell"><b>AiTEMS 노출 재료가 41점으로 가장 낮습니다.</b> 네이버 AI 추천은 이미지·상세설명·태그로 상품을 읽어요. 이 점수가 낮으면 추천 노출에서 밀립니다. → ② AI 보강에서 채울 수 있어요.</NvBanner></div>
           </div>
           <div className="nv-card">
             <div className="nv-card-h" style={{ flexWrap: "wrap", gap: 10 }}>
-              <h3 className="nv-card-t">상품별 진단 <span className="nv-card-hint" style={{ fontWeight: 500 }}>{shown.length}개 · 상위 {diag.length}개 분석 완료</span></h3>
+              <h3 className="nv-card-t">상품별 진단 <span className="nv-card-hint" style={{ fontWeight: 500 }}>{shown.length}개 · 전체 1,000개 분석 완료</span></h3>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <span style={{ fontSize: 12, color: "var(--ink-2)" }}>모아보기</span>
                 <NvSeg value={scoreMax} onChange={v => { setScoreMax(v); setOpenId(null); }} tabs={[[50, "50↓"], [60, "60↓"], [70, "70↓"], [100, "전체"]]} />
@@ -128,10 +69,9 @@ export default function Optimize() {
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
               {shown.map(d => {
                 const open = openId === d.id;
-                const rec = recCache[d.originProductNo];
                 return (
                   <div key={d.id} style={{ borderRadius: 14, border: "1px solid var(--line)", overflow: "hidden" }}>
-                    <div onClick={() => toggleRow(d)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", cursor: "pointer", background: open ? "var(--line-2)" : "#fff" }}>
+                    <div onClick={() => setOpenId(open ? null : d.id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", cursor: "pointer", background: open ? "var(--line-2)" : "#fff" }}>
                       <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: sCol(d.score), width: 40, textAlign: "center" }}>{d.score}</div>
                       <div style={{ flex: 1 }}><div style={{ fontSize: 13.5, fontWeight: 700 }}>{d.name}</div><div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 1 }}>{d.cat}</div></div>
                       <div style={{ display: "flex", gap: 5 }}>
@@ -143,48 +83,20 @@ export default function Optimize() {
                       <div style={{ padding: "16px", borderTop: "1px solid var(--line)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                         <div>
                           <div style={{ fontSize: 12, fontWeight: 800, color: "var(--ink-2)", marginBottom: 9 }}>진단 상세 — 무엇이 부족한가</div>
-                          <div style={{ marginBottom: 9 }}>
-                            <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-3)", marginBottom: 3 }}>점수 요약</div>
-                            <div style={{ fontSize: 12, color: "var(--ink-2)", lineHeight: 1.65 }}>· 상품명 SEO {d.n}점 · 속성 완성도 {d.a}점 · AiTEMS {d.ai}점</div>
-                          </div>
-                          {d.nameDetails?.length > 0 && (
-                            <div style={{ marginBottom: 9 }}>
-                              <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-3)", marginBottom: 3 }}>상품명</div>
-                              {d.nameDetails.map((x, j) => <div key={j} style={{ fontSize: 12, color: "var(--ink-2)", lineHeight: 1.65 }}>· {x}</div>)}
+                          {[["상품명", d.detail.name], ["속성", d.detail.attr], ["AiTEMS", d.detail.ai]].map(([t, arr]) => (
+                            <div key={t} style={{ marginBottom: 9 }}>
+                              <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-3)", marginBottom: 3 }}>{t}</div>
+                              {arr.length === 0 ? <div style={{ fontSize: 12, color: "var(--green-ink)" }}>✓ 이상 없음</div> : arr.map((x, j) => <div key={j} style={{ fontSize: 12, color: "var(--ink-2)", lineHeight: 1.65 }}>· {x}</div>)}
                             </div>
-                          )}
-                          {d.aiDetails?.length > 0 && (
-                            <div style={{ marginBottom: 9 }}>
-                              <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-3)", marginBottom: 3 }}>AiTEMS</div>
-                              {d.aiDetails.map((x, j) => <div key={j} style={{ fontSize: 12, color: "var(--ink-2)", lineHeight: 1.65 }}>· {x}</div>)}
-                            </div>
-                          )}
-                          {d.missingAttributes?.length > 0 && (
-                            <div style={{ marginBottom: 9 }}>
-                              <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-3)", marginBottom: 3 }}>누락 속성</div>
-                              {d.missingAttributes.map((x, j) => <div key={j} style={{ fontSize: 12, color: "var(--ink-2)", lineHeight: 1.65 }}>· {x}</div>)}
-                            </div>
-                          )}
+                          ))}
                         </div>
                         <div>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--green-ink)", marginBottom: 9, display: "flex", alignItems: "center", gap: 5 }}><NvIcon name="sparkles" size={12} /> AI 추천</div>
-                          {recLoading === d.originProductNo ? (
-                            <div style={{ fontSize: 12.5, color: "var(--ink-3)", padding: "10px 0" }}>AI 추천 생성 중…</div>
-                          ) : rec?.error ? (
-                            <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>추천을 불러오지 못했어요.</div>
-                          ) : rec ? (
-                            <>
-                              <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginBottom: 3 }}>추천 상품명</div>
-                              <div style={{ fontSize: 13, fontWeight: 600, padding: "9px 12px", background: "var(--green-soft)", borderRadius: 10, lineHeight: 1.5 }}>{rec.recommendedName || "—"}</div>
-                              {rec.tags?.length > 0 && (<>
-                                <div style={{ fontSize: 11.5, color: "var(--ink-3)", margin: "11px 0 6px" }}>추천 태그</div>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{rec.tags.map(t => <span key={t} className="nv-chip green" style={{ fontSize: 11.5 }}>+ {t}</span>)}</div>
-                              </>)}
-                              <button className="nv-btn primary sm" style={{ marginTop: 13 }} onClick={e => { e.stopPropagation(); setTab("enrich"); }}>이 상품 보강하기</button>
-                            </>
-                          ) : (
-                            <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>행을 펼치면 추천을 생성합니다.</div>
-                          )}
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--green-ink)", marginBottom: 9, display: "flex", alignItems: "center", gap: 5 }}><NvIcon name="sparkles" size={12} /> AI 추천 (검색광고 데이터 기반)</div>
+                          <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginBottom: 3 }}>추천 상품명</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, padding: "9px 12px", background: "var(--green-soft)", borderRadius: 10, lineHeight: 1.5 }}>{d.rec.name}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--ink-3)", margin: "11px 0 6px" }}>추천 태그 (검색량 검증)</div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{d.rec.tags.map(t => <span key={t} className="nv-chip green" style={{ fontSize: 11.5 }}>+ {t}</span>)}</div>
+                          <button className="nv-btn primary sm" style={{ marginTop: 13 }} onClick={e => { e.stopPropagation(); setTab("enrich"); }}>이 상품 보강하기</button>
                         </div>
                       </div>
                     )}
@@ -194,7 +106,6 @@ export default function Optimize() {
             </div>
           </div>
         </>
-        )
       )}
 
       {tab === "enrich" && (

@@ -1,5 +1,5 @@
 // NavOne 대시보드 — API 호출 헬퍼
-const API_BASE = "";
+const API_BASE = "https://pjhbless0831.cafe24.com";
 const LICENSE_KEY = "navone_license_key";
 const SETTINGS_KEY = "navone_settings";
 // 미설정 시 사용하는 기본 테스트 라이선스 키.
@@ -123,72 +123,28 @@ export function truncate(s, n = 40) {
 
 // ===== 운영 모듈 엔드포인트 공통 GET =====
 // 응답 형태: { success, data } | { success:false, error } | { error: "..." }
-// ── TTL 캐시 (페이지 전환 시 동일 GET 재호출 방지) ──
-const _cache = new Map();      // url → { ts, data }
-const _inflight = new Map();   // url → Promise
-const CACHE_TTL = 5 * 60_000;  // 5분
-
-export function clearApiCache(prefix) {
-  if (!prefix) { _cache.clear(); return; }
-  for (const k of _cache.keys()) if (k.includes(prefix)) _cache.delete(k);
-}
-
-// 캐시 키 빌더 (apiGet과 동일 규칙)
-function _cacheUrl(path, params = {}) {
-  const q = new URLSearchParams({ licenseKey: getLicenseKey(), ...params });
-  return `${API_BASE}/api/${path}?${q.toString()}`;
-}
-
-// 동기적으로 캐시된 값 즉시 반환 (없으면 undefined) — 페이지 초기값용, 로딩 깜빡임 제거
-export function getCached(path, params = {}) {
-  const hit = _cache.get(_cacheUrl(path, params));
-  if (hit && Date.now() - hit.ts < CACHE_TTL) return hit.data;
-  return undefined;
-}
-
 async function apiGet(path, params = {}) {
-  const url = _cacheUrl(path, params);
-
-  // 캐시 히트 (TTL 내)
-  const hit = _cache.get(url);
-  if (hit && Date.now() - hit.ts < CACHE_TTL) return hit.data;
-
-  // 진행 중인 동일 요청이 있으면 그것을 공유 (중복 호출 방지)
-  if (_inflight.has(url)) return _inflight.get(url);
-
-  const p = (async () => {
-    const res = await fetch(url);
-    let data = {};
-    try { data = await res.json(); } catch { /* ignore */ }
-    const errMsg = typeof data.error === "string" ? data.error : data?.error?.message;
-    if (!res.ok || data.success === false || errMsg) {
-      throw new Error(errMsg || `요청 실패 (${res.status})`);
-    }
-    _cache.set(url, { ts: Date.now(), data });
-    return data;
-  })();
-  _inflight.set(url, p);
-  try { return await p; }
-  finally { _inflight.delete(url); }
+  const lk = getLicenseKey();
+  const q = new URLSearchParams({ licenseKey: lk, ...params });
+  const res = await fetch(`${API_BASE}/api/${path}?${q.toString()}`);
+  let data = {};
+  try { data = await res.json(); } catch { /* ignore */ }
+  const errMsg = typeof data.error === "string" ? data.error : data?.error?.message;
+  if (!res.ok || data.success === false || errMsg) {
+    throw new Error(errMsg || `요청 실패 (${res.status})`);
+  }
+  return data;
 }
 
-export const fetchClaims        = () => apiGet("claim/pending", { days: 7 }).then((d) => d.data);
+export const fetchClaims        = () => apiGet("claim/pending").then((d) => d.data);
 export const fetchOrders        = () => apiGet("order/pending").then((d) => d.data);
 export const fetchPenaltyScan   = () => apiGet("penalty/risk-scan").then((d) => d.data);
-export const fetchInquiries     = () => apiGet("inquiry/list");  // {inquiries, total} 최상위 (data 래핑 없음)
+export const fetchInquiries     = () => apiGet("inquiry/list").then((d) => d.data);
 export const fetchGroupSuggest  = () => apiGet("group/suggest").then((d) => d.data);
 export const fetchAdEfficiency  = () => apiGet("ad/efficiency").then((d) => d.data);
-export const fetchQaList        = () => apiGet("qa/list");        // 최상위 구조
+export const fetchQaList        = () => apiGet("qa/list").then((d) => d.data);
 export const analyzeProduct     = (originProductNo) =>
   apiGet("product-ai/analyze", { originProductNo }).then((d) => d.data);
-
-// 상품 노출 진단 (전체 일괄) — bulk-analyze. 응답: {success, data:{count, products[]}}
-export const fetchProductDiagnosis = (limit = 50) =>
-  apiGet("product-ai/bulk-analyze", { limit }).then((d) => d.data || d);
-
-// 리뷰 목록 (확장이 DB에 모은 미답글 리뷰) — review/list
-export const fetchReviewList = (status = "pending", limit = 50) =>
-  apiGet("review/list", { status, limit });
 
 // 금액/숫자 포맷 (won은 formatPrice의 별칭, 페이지에서 자주 쓰임)
 export function won(n) {
@@ -227,48 +183,3 @@ export const fetchCommissionRoi = () => apiGet("settlement/commission-roi").then
 
 // 주의: fetchClaims / fetchPenaltyScan / fetchOrders / fetchQaList /
 // fetchInquiries / fetchAdEfficiency 는 위쪽(공통 GET 블록)에 이미 정의됨.
-
-// ===== POST/PATCH 공통 =====
-async function apiSend(path, body = {}, method = "POST") {
-  const lk = getLicenseKey();
-  const res = await fetch(`${API_BASE}/api/${path}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ licenseKey: lk, ...body }),
-  });
-  let data = {};
-  try { data = await res.json(); } catch { /* ignore */ }
-  const errMsg = typeof data.error === "string" ? data.error : data?.error?.message;
-  if (!res.ok || data.success === false || errMsg) {
-    throw new Error(errMsg || `요청 실패 (${res.status})`);
-  }
-  // 쓰기 성공 → 관련 캐시 무효화 (cost 저장 시 cost-list/margin 갱신되게)
-  const base = path.split("/")[0];        // "product" | "review" | ...
-  clearApiCache(base);
-  if (base === "product") clearApiCache("settlement/margin-rank");
-  return data;
-}
-
-// ===== 원가 관리 (product/cost-*) =====
-// 상품 전체 + 저장된 원가 머지. 응답: { products:[{channelProductNo, productName, category, salePrice, cost|null}], count, costConfigured }
-export const fetchCostList = () => apiGet("product/cost-list");
-// 엑셀 파싱(SheetJS)은 프론트에서 → JSON 일괄 저장. items: [{channelProductNo, cost, productName?}]
-export const saveCostBulk = (items) => apiSend("product/cost-bulk", { items }, "POST");
-// 개별 수정
-export const saveCost = (channelProductNo, cost) => apiSend("product/cost", { channelProductNo, cost }, "PATCH");
-
-// ===== 가격 자동화 리모트컨트롤 (automation/config) =====
-// GET → { enabled, intervalMinutes, testMode, runNow, lastRunAt }
-export const fetchAutomationConfig = () => apiGet("automation/config").then((d) => d.config);
-// POST patch (대시보드 설정 저장). 보낸 필드만 갱신. 저장 후 automation 캐시 자동 무효화.
-export const saveAutomationConfig = (patch) => apiSend("automation/config", patch, "POST").then((d) => d.config);
-
-// ===== 판매 현황 (order/sales-status) =====
-// from/to(ISO, KST) + rangeType. 응답: { summary{orderCount,totalSales,totalSettlement,totalCommission,statusCounts}, orders[] }
-export const fetchSalesStatus = ({ from, to, rangeType } = {}) => {
-  const params = {};
-  if (from) params.from = from;
-  if (to) params.to = to;
-  if (rangeType) params.rangeType = rangeType;
-  return apiGet("order/sales-status", params);
-};

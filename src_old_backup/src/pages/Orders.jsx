@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import NvIcon from "../components/NvIcon";
-import { NvPageHead, NvToggle, NvStat, NvStatRow, NvEmpty, NvSeg } from "../components/atoms";
+import { NvPageHead, NvToggle, NvStat, NvStatRow } from "../components/atoms";
 import { fetchOrders } from "../lib/api";
-import SalesStatus from "../components/SalesStatus";
 
 const FALLBACK_ORDERS = [
   { id: "PO2026052814523987", product: "샤인머스캣 1kg 특품", buyer: "김*영", qty: 2, amount: 49800, stage: 5, tracking: "6012345678901", at: "09:42", stock: 42 },
@@ -32,21 +31,21 @@ export default function Orders() {
   const [custNo, setCustNo] = useState("40287156");
   const [threshold, setThreshold] = useState(3);
   const [track, setTrack] = useState(null);
-  const [orders, setOrders] = useState([]);
-  const [status, setStatus] = useState("loading"); // loading | ok | empty | error
+  const [orders, setOrders] = useState(FALLBACK_ORDERS);
+  const [fb, setFb] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    setStatus("loading");
+    setLoading(true);
     try {
       const d = await fetchOrders();
       const mapped = mapOrders(d?.orders || d);
-      if (mapped.length) { setOrders(mapped); setStatus("ok"); }
-      else { setOrders([]); setStatus("empty"); }
-    } catch { setOrders(FALLBACK_ORDERS); setStatus("error"); }
+      if (mapped.length) { setOrders(mapped); setFb(false); }
+      else { setFb(true); }
+    } catch { setFb(true); }
+    setLoading(false);
   };
   useEffect(() => { load(); }, []);
-  const loading = status === "loading";
-  const [tab, setTab] = useState("sales"); // sales | dispatch — 판매현황 우선
 
   const carriers = [["CJGLS", "CJ대한통운"], ["HANJIN", "한진택배"], ["LOTTE", "롯데택배"], ["EPOST", "우체국"], ["LOGEN", "로젠택배"]];
   const cName = Object.fromEntries(carriers);
@@ -64,14 +63,9 @@ export default function Orders() {
 
   return (
     <>
-      <NvPageHead title="판매 현황" sub="스토어 판매·정산 현황을 한눈에 봐요. 발주 자동화는 곧 연결됩니다."
+      <NvPageHead title="주문 · 발주 관리" sub="주문이 들어오면 발주확인부터 송장 등록까지 자동으로 처리해요. 사장님은 포장만 하세요."
         actions={<div style={{ display: "flex", alignItems: "center", gap: 10 }}><button className="nv-btn ghost sm" onClick={load} disabled={loading}><NvIcon name="refresh" size={13} /> 새로고침</button><span style={{ fontSize: 13.5, fontWeight: 700, color: autoOn ? "var(--green-ink)" : "var(--ink-3)" }}>전체 자동</span><NvToggle on={autoOn} onChange={setAutoOn} /></div>} />
 
-      <NvSeg style={{ marginBottom: 20 }} value={tab} onChange={setTab} tabs={[["sales", "판매 현황"], ["dispatch", "발주 처리"]]} />
-
-      {tab === "sales" && <SalesStatus />}
-
-      {tab === "dispatch" && (<>
       <div className="nv-card" style={{ marginBottom: 16 }}>
         <div className="nv-card-h">
           <h3 className="nv-card-t">자동화 흐름</h3>
@@ -142,13 +136,7 @@ export default function Orders() {
       </div>
 
       <div className="nv-card">
-        <div className="nv-card-h"><h3 className="nv-card-t">오늘 주문</h3><span className="nv-card-hint">{status === "error" ? "예시 · " : ""}{status === "empty" ? 0 : orders.length}건</span></div>
-        {status === "error" && <div style={{ marginBottom: 14 }}><div className="nv-banner amber"><span className="bi"><NvIcon name="bell" size={17} /></span><span>주문 데이터를 불러오지 못해 예시를 표시합니다. 새로고침을 눌러 주세요.</span></div></div>}
-        {status === "empty" ? (
-          <NvEmpty icon="check" title="발주 대기 주문이 없어요" desc="새 주문이 들어오면 여기에 표시되고, 자동으로 발주확인·송장 등록까지 처리됩니다." />
-        ) : status === "loading" ? (
-          <div style={{ padding: "44px 0", textAlign: "center", color: "var(--ink-3)", fontSize: 13 }}>불러오는 중…</div>
-        ) : (
+        <div className="nv-card-h"><h3 className="nv-card-t">오늘 주문</h3><span className="nv-card-hint">{fb ? "예시 · " : ""}{orders.length}건</span></div>
         <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
           {orders.map(o => {
             const done = o.stage === 5, ex = !!o.exception;
@@ -194,7 +182,6 @@ export default function Orders() {
             );
           })}
         </div>
-        )}
       </div>
 
       {track && (() => {
@@ -233,7 +220,6 @@ export default function Orders() {
           </div>
         );
       })()}
-      </>)}
     </>
   );
 }

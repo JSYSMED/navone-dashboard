@@ -7,7 +7,7 @@ const NV_NAV = [
     label: "운영", items: [
       { id: "dashboard", label: "대시보드", icon: "home" },
       { id: "price", label: "가격 관리", icon: "tag" },
-      { id: "orders", label: "판매 현황", icon: "box" },
+      { id: "orders", label: "주문·발주", icon: "box" },
       { id: "settlement", label: "정산·광고 분석", icon: "trend" },
     ]
   },
@@ -15,7 +15,6 @@ const NV_NAV = [
     label: "고객·품질", items: [
       { id: "reviews", label: "고객응대 AI", icon: "chat", dot: true },
       { id: "optimize", label: "상품 최적화", icon: "sparkles" },
-      { id: "group", label: "그룹상품", icon: "list" },
       { id: "risk", label: "리스크 관리", icon: "shield" },
     ]
   },

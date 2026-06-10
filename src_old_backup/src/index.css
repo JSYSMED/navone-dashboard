@@ -1,0 +1,5 @@
+/* Pretendard는 index.html에서 CDN 로드됨. 디자인 시스템만 import */
+@import "./commerone.css";
+
+html, body, #root { margin: 0; padding: 0; height: 100%; }
+body { background: var(--bg); }

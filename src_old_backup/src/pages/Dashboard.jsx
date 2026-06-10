@@ -42,7 +42,7 @@ export default function Dashboard({ onNav = () => {} }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, gap: 20, flexWrap: "wrap" }}>
         <div>
           <div className="nv-greet-time">{greetTime()}</div>
-          <h1 className="nv-greet-h">오늘도 고생 많으세요 사장님</h1>
+          <h1 className="nv-greet-h">오늘도 고생 많으세요 사장님! 👏</h1>
         </div>
         <NvExtStatus connected={hasLicense} />
       </div>

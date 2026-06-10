@@ -6,10 +6,8 @@ import Orders from "./pages/Orders";
 import Settlement from "./pages/Settlement";
 import Customer from "./pages/Customer";
 import Optimize from "./pages/Optimize";
-import Group from "./pages/Group";
 import Risk from "./pages/Risk";
 import Settings from "./pages/Settings";
-import LoginGate from "./components/LoginGate";
 
 const PAGES = {
   dashboard: Dashboard,
@@ -18,7 +16,6 @@ const PAGES = {
   settlement: Settlement,
   reviews: Customer,
   optimize: Optimize,
-  group: Group,
   risk: Risk,
   settings: Settings,
 };
@@ -44,17 +41,13 @@ export default function App() {
   const Page = PAGES[page] || Dashboard;
 
   return (
-    <LoginGate>
-      {(user) => (
-        <div className="nv">
-          <div className="nv-app">
-            <Sidebar active={page} onNav={nav} user={user} />
-            <main className="nv-main nv-scroll">
-              <Page onNav={nav} />
-            </main>
-          </div>
-        </div>
-      )}
-    </LoginGate>
+    <div className="nv">
+      <div className="nv-app">
+        <Sidebar active={page} onNav={nav} />
+        <main className="nv-main nv-scroll">
+          <Page onNav={nav} />
+        </main>
+      </div>
+    </div>
   );
 }

@@ -13,17 +13,30 @@ export function setLicenseKey(key) {
   localStorage.setItem(LICENSE_KEY, key || "");
 }
 
-// ===== 일반 설정 (Commerce API / 스토어 / 텔레그램) — localStorage =====
-export function getSettings() {
+// ===== 일반 설정 (스토어/텔레그램/상세페이지) — 서버 저장 + localStorage 캐시 =====
+// 서버(navone_settings)가 진짜 소스. localStorage는 즉시 표시용 캐시.
+// 라이선스 키로 어느 기기/브라우저에서도 동일한 설정을 불러온다.
+export function getSettings() {          // 동기: localStorage 캐시 (초기 렌더용)
   try {
     return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
   } catch {
     return {};
   }
 }
-export function saveSettings(patch) {
+export async function syncSettings() {   // 서버에서 최신 가져와 캐시 갱신
+  try {
+    const d = await apiGet("settings");  // { success, settings }
+    const s = (d && d.settings) || {};
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    return s;
+  } catch {
+    return getSettings();                // 서버 실패 시 캐시 폴백
+  }
+}
+export async function saveSettings(patch) {
   const next = { ...getSettings(), ...patch };
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));  // 캐시 즉시 갱신
+  try { await apiSend("settings", { patch }, "POST"); } catch {}  // 서버 저장
   return next;
 }
 
@@ -177,6 +190,14 @@ export const fetchOrders        = () => apiGet("order/pending").then((d) => d.da
 export const fetchPenaltyScan   = () => apiGet("penalty/risk-scan").then((d) => d.data);
 export const fetchInquiries     = () => apiGet("inquiry/list");  // {inquiries, total} 최상위 (data 래핑 없음)
 export const fetchGroupSuggest  = () => apiGet("group/suggest").then((d) => d.data);
+
+// ===== 범용 결과 캐시 (cache/feature) — 무거운 AI 결과 영구 저장 =====
+// GET → { result, updatedAt } | null,  저장 → updatedAt
+export const fetchFeatureCache = (feature) =>
+  apiGet("cache/feature", { feature }).then((d) => d.cached);
+export const saveFeatureCache = (feature, result) =>
+  apiSend("cache/feature", { feature, result }, "POST");
+
 export const fetchAdEfficiency  = () => apiGet("ad/efficiency").then((d) => d.data);
 export const fetchQaList        = () => apiGet("qa/list");        // 최상위 구조
 export const analyzeProduct     = (originProductNo) =>

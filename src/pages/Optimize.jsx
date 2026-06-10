@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import NvIcon from "../components/NvIcon";
 import { NvPageHead, NvSeg, NvBanner, NvStat, NvStatRow, NvEmpty } from "../components/atoms";
-import { fetchProductDiagnosis, analyzeProduct } from "../lib/api";
+import { fetchProductDiagnosis, analyzeProduct, fetchFeatureCache, saveFeatureCache } from "../lib/api";
 
 // 서버 bulk-analyze 응답 → 화면 형식 매핑
 // scores.{nameSeo,attributeCompleteness,aitems}는 {score,max,details} 중첩 객체
@@ -23,16 +23,20 @@ function mapDiag(products) {
   }));
 }
 
+// 모듈 레벨 캐시 — 페이지를 나갔다 다시 들어와도 직전 진단 결과와 AI 추천을 유지한다.
+// (브라우저 새로고침 시에는 비워짐. "다시 진단"을 누르면 강제로 새로 분석.)
+let _optimizeCache = null;
+
 export default function Optimize() {
   const [tab, setTab] = useState("diagnose");
   const [scoreMax, setScoreMax] = useState(70);
   const [openId, setOpenId] = useState(null);
 
-  // 진단 데이터 (API)
-  const [diag, setDiag] = useState([]);
-  const [summary, setSummary] = useState({ count: 0, averageOverall: 0, needsImprovement: 0 });
-  const [status, setStatus] = useState("loading"); // loading|ok|empty|error
-  const [recCache, setRecCache] = useState({}); // originProductNo -> {recommendedName, tags}
+  // 진단 데이터 (API). 모듈 캐시로 페이지 이동 간 유지 — 매번 무거운 AI 진단 재호출 방지.
+  const [diag, setDiag] = useState(_optimizeCache?.diag || []);
+  const [summary, setSummary] = useState(_optimizeCache?.summary || { count: 0, averageOverall: 0, needsImprovement: 0 });
+  const [status, setStatus] = useState(_optimizeCache ? "ok" : "loading"); // loading|ok|empty|error
+  const [recCache, setRecCache] = useState(_optimizeCache?.recCache || {}); // originProductNo -> {recommendedName, tags}
   const [recLoading, setRecLoading] = useState(null);
 
   const loadDiag = async () => {
@@ -40,18 +44,51 @@ export default function Optimize() {
     try {
       const d = await fetchProductDiagnosis(50);
       const mapped = mapDiag(d?.products);
-      setSummary({
+      const nextSummary = {
         count: d?.count ?? mapped.length,
         averageOverall: Math.round(d?.summary?.averageOverall ?? 0),
         needsImprovement: d?.summary?.needsImprovement ?? mapped.filter(x => x.score < 60).length,
-      });
-      if (mapped.length) { setDiag(mapped); setStatus("ok"); }
-      else { setDiag([]); setStatus("empty"); }
+      };
+      setSummary(nextSummary);
+      if (mapped.length) {
+        setDiag(mapped); setStatus("ok");
+        _optimizeCache = { diag: mapped, summary: nextSummary, recCache: {} };  // 메모리 캐시(추천은 새로)
+        setRecCache({});
+        saveFeatureCache("optimize", { diag: mapped, summary: nextSummary, recCache: {} }).catch(() => {});  // 서버 영구 캐시
+      }
+      else { setDiag([]); setStatus("empty"); _optimizeCache = null; }
     } catch { setStatus("error"); }
   };
-  useEffect(() => { loadDiag(); }, []);
 
-  // 행 펼칠 때 AI 추천 lazy 로드
+  // 우선순위: 모듈캐시(페이지이동) → 서버캐시(새로고침) → 새 진단.
+  useEffect(() => {
+    if (_optimizeCache) {
+      setDiag(_optimizeCache.diag);
+      setSummary(_optimizeCache.summary);
+      setRecCache(_optimizeCache.recCache || {});
+      setStatus(_optimizeCache.diag.length ? "ok" : "empty");
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const cached = await fetchFeatureCache("optimize");
+        if (alive && cached?.result?.diag) {
+          const c = cached.result;
+          _optimizeCache = { diag: c.diag, summary: c.summary, recCache: c.recCache || {} };
+          setDiag(c.diag);
+          setSummary(c.summary);
+          setRecCache(c.recCache || {});
+          setStatus(c.diag.length ? "ok" : "empty");
+          return;
+        }
+      } catch {}
+      if (alive) loadDiag();   // 서버 캐시도 없으면 새로 진단
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // 행 펼칠 때 AI 추천 lazy 로드 (캐시에도 저장 → 재방문 시 재호출 안 함)
   const toggleRow = async (d) => {
     const next = openId === d.id ? null : d.id;
     setOpenId(next);
@@ -60,8 +97,19 @@ export default function Optimize() {
       try {
         const r = await analyzeProduct(d.originProductNo);
         const ai = r?.ai || r || {};
-        setRecCache(c => ({ ...c, [d.originProductNo]: { recommendedName: ai.recommendedName || "", tags: ai.keywordSuggestions || ai.tags || [] } }));
-      } catch { setRecCache(c => ({ ...c, [d.originProductNo]: { recommendedName: "", tags: [], error: true } })); }
+        const entry = { recommendedName: ai.recommendedName || "", tags: ai.keywordSuggestions || ai.tags || [] };
+        setRecCache(c => {
+          const nc = { ...c, [d.originProductNo]: entry };
+          if (_optimizeCache) _optimizeCache.recCache = nc;   // 모듈 캐시에도 반영
+          return nc;
+        });
+      } catch {
+        setRecCache(c => {
+          const nc = { ...c, [d.originProductNo]: { recommendedName: "", tags: [], error: true } };
+          if (_optimizeCache) _optimizeCache.recCache = nc;
+          return nc;
+        });
+      }
       setRecLoading(null);
     }
   };
@@ -83,7 +131,10 @@ export default function Optimize() {
   return (
     <>
       <NvPageHead title="상품 노출 최적화" sub="상품을 사람·검색·AI(AiTEMS) 모두에게 잘 읽히게 만들어요. 진단 → AI 보강 → 월간 갱신."
-        actions={<span className="nv-pill green"><NvIcon name="sparkles" size={12} /> 월간 구독</span>} />
+        actions={<div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button className="nv-btn ghost sm" onClick={loadDiag} disabled={status === "loading"}><NvIcon name="refresh" size={13} /> 다시 진단</button>
+          <span className="nv-pill green"><NvIcon name="sparkles" size={12} /> 월간 구독</span>
+        </div>} />
 
       <NvSeg style={{ marginBottom: 20 }} value={tab} onChange={setTab} tabs={[["diagnose", "① 진단"], ["enrich", "② AI 보강"], ["refresh", "③ 월간 갱신"]]} />
 

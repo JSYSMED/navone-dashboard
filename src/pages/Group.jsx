@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import NvIcon from "../components/NvIcon";
 import { NvPageHead, NvBanner, NvEmpty } from "../components/atoms";
-import { fetchGroupSuggest } from "../lib/api";
+import { fetchGroupSuggest, fetchFeatureCache, saveFeatureCache } from "../lib/api";
 
 const won = (n) => (Number(n) || 0).toLocaleString() + "원";
 
@@ -19,22 +19,36 @@ export default function Group() {
       const d = await fetchGroupSuggest();
       const candidates = d?.candidates || [];
       const next = { scanned: d?.scanned || 0, count: d?.count ?? candidates.length, candidates };
-      _groupCache = next;                 // 결과 캐시에 저장
+      _groupCache = next;                 // 메모리 캐시
       setData(next);
       setStatus(candidates.length ? "ok" : "empty");
+      saveFeatureCache("group", next).catch(() => {});   // 서버 영구 캐시(새로고침 대비)
     } catch {
       setStatus("error");
     }
   };
 
-  // 캐시가 있으면 재파싱하지 않고 그대로 보여준다. 없을 때만(첫 진입) 스캔.
+  // 우선순위: 모듈캐시(페이지이동) → 서버캐시(새로고침) → 새 스캔.
   useEffect(() => {
     if (_groupCache) {
       setData(_groupCache);
       setStatus(_groupCache.candidates.length ? "ok" : "empty");
-    } else {
-      load();
+      return;
     }
+    let alive = true;
+    (async () => {
+      try {
+        const cached = await fetchFeatureCache("group");
+        if (alive && cached?.result) {
+          _groupCache = cached.result;
+          setData(cached.result);
+          setStatus(cached.result.candidates?.length ? "ok" : "empty");
+          return;
+        }
+      } catch {}
+      if (alive) load();   // 서버 캐시도 없으면 새로 스캔
+    })();
+    return () => { alive = false; };
   }, []);
 
   return (

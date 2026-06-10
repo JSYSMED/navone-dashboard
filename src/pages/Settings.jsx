@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NvIcon from "../components/NvIcon";
 import { NvPageHead, NvSeg, NvField, NvBanner } from "../components/atoms";
-import { getSettings, saveSettings, getLicenseKey, setLicenseKey } from "../lib/api";
+import { getSettings, saveSettings, syncSettings, getLicenseKey, setLicenseKey } from "../lib/api";
 
 export default function Settings() {
   const init = getSettings();
@@ -17,9 +17,21 @@ export default function Settings() {
   const [tgChatId, setTgChatId] = useState(init.tgChatId || "");
   const [license, setLicense] = useState(getLicenseKey() || "");
 
-  const save = () => {
-    saveSettings({ storeName, category, pageInfo, tgToken, tgChatId });
-    if (license) setLicenseKey(license.trim());
+  // 서버에서 최신 설정을 가져와 반영 (localStorage 캐시는 초기 표시용)
+  useEffect(() => {
+    syncSettings().then(s => {
+      if (!s) return;
+      if (s.storeName != null) setStoreName(s.storeName);
+      if (s.category != null) setCategory(s.category);
+      if (s.pageInfo != null) setPageInfo(s.pageInfo);
+      if (s.tgToken != null) setTgToken(s.tgToken);
+      if (s.tgChatId != null) setTgChatId(s.tgChatId);
+    });
+  }, []);
+
+  const save = async () => {
+    if (license) setLicenseKey(license.trim());   // 라이선스 키 먼저(서버 조회 기준)
+    await saveSettings({ storeName, category, pageInfo, tgToken, tgChatId });
     setSaved(true);
     setTimeout(() => setSaved(false), 2200);
   };

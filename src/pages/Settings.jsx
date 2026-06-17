@@ -10,6 +10,39 @@ export default function Settings() {
   const [sent, setSent] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // 비번 재확인 게이트 — 세션당 한 번만 (탭 열려있는 동안 유지)
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("co_settings_unlocked") === "1");
+  const [pw, setPw] = useState("");
+  const [pwErr, setPwErr] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+
+  const verify = async () => {
+    setPwErr("");
+    if (!pw) { setPwErr("비밀번호를 입력하세요."); return; }
+    setPwBusy(true);
+    try {
+      const r = await fetch("/api/auth/verify-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ password: pw }),
+      });
+      const d = await r.json();
+      if (d?.ok) {
+        sessionStorage.setItem("co_settings_unlocked", "1");
+        setUnlocked(true);
+        setPw("");
+      } else if (d?.code === "NO_PASSWORD") {
+        setPwErr("이 계정은 비밀번호가 없어 확인할 수 없습니다. (네이버 로그인 계정)");
+      } else {
+        setPwErr("비밀번호가 올바르지 않습니다.");
+      }
+    } catch {
+      setPwErr("서버에 연결하지 못했습니다.");
+    }
+    setPwBusy(false);
+  };
+
   const [storeName, setStoreName] = useState(init.storeName || "");
   const [category, setCategory] = useState(init.category || "");
   const [pageInfo, setPageInfo] = useState(init.pageInfo || "");
@@ -43,6 +76,34 @@ export default function Settings() {
     { name: "엔터프라이즈", range: "2,000개 이상", price: null, sub: "다채널·대량 셀러", feats: ["프로 전체", "물량 맞춤 단가", "전담 지원", "맞춤 기능 협의"] },
   ];
 
+  // 비번 재확인 전에는 설정 내용을 가리고 잠금 화면을 보여준다.
+  if (!unlocked) {
+    return (
+      <>
+        <NvPageHead title="설정" sub="보안을 위해 비밀번호를 한 번 더 확인합니다." />
+        <div style={{ maxWidth: 420, margin: "40px auto 0", padding: "28px 26px", border: "1px solid var(--line)", borderRadius: 16, background: "#fff", textAlign: "center" }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: "var(--green-soft)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", color: "var(--green-ink)" }}>
+            <NvIcon name="shield" size={24} />
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>비밀번호 확인</div>
+          <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.6, marginBottom: 18 }}>
+            설정에는 알림·연동 정보가 포함되어 있어요.<br />계속하려면 비밀번호를 입력하세요.
+          </div>
+          <input
+            className="nv-input" type="password" placeholder="비밀번호" value={pw}
+            onChange={e => setPw(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") verify(); }}
+            autoFocus style={{ marginBottom: 10 }}
+          />
+          {pwErr && <div style={{ color: "var(--red)", fontSize: 12.5, marginBottom: 10, textAlign: "left" }}>{pwErr}</div>}
+          <button className="nv-btn primary" style={{ width: "100%", justifyContent: "center" }} onClick={verify} disabled={pwBusy}>
+            {pwBusy ? "확인 중…" : "확인"}
+          </button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <NvPageHead title="설정" sub="CommerOne 동작에 필요한 계정·알림·라이선스와 요금제를 관리합니다."
@@ -58,7 +119,7 @@ export default function Settings() {
             </div>
             <div className="nv-card">
               <div className="nv-card-h"><h3 className="nv-card-t">스토어 정보</h3></div>
-              <NvField label="스토어명"><input className="nv-input" value={storeName} onChange={e => setStoreName(e.target.value)} placeholder="예: 볼빨간오빠" /></NvField>
+              <NvField label="스토어명"><input className="nv-input" value={storeName} onChange={e => setStoreName(e.target.value)} placeholder="예: 스마트스토어" /></NvField>
               <div style={{ marginTop: 14 }}><NvField label="카테고리"><input className="nv-input" value={category} onChange={e => setCategory(e.target.value)} placeholder="식품 > 신선식품 > 과일" /></NvField></div>
             </div>
             <div className="nv-card">

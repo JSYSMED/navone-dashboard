@@ -1,5 +1,6 @@
 import NvIcon from "./NvIcon";
 import { getSettings } from "../lib/api";
+import { logout } from "./LoginGate";
 
 // 6대분류 + 대시보드/설정 — 2그룹 내비게이션 (CommerOne 시안)
 const NV_NAV = [
@@ -26,7 +27,7 @@ const NV_NAV = [
   },
 ];
 
-export default function Sidebar({ active = "dashboard", onNav = () => {}, counts = {} }) {
+export default function Sidebar({ active = "dashboard", onNav = () => {}, counts = {}, user = null }) {
   const settings = getSettings();
   const storeName = settings.storeName || "내 스토어";
   const planDays = settings.planDays ?? 23;
@@ -74,6 +75,29 @@ export default function Sidebar({ active = "dashboard", onNav = () => {}, counts
         </div>
         <div className="nv-plan-bar"><i style={{ width: `${Math.max(0, Math.min(100, (planDays / 30) * 100))}%` }} /></div>
         <button className="nv-plan-cta" onClick={() => onNav("settings")}>플랜 관리 <NvIcon name="chevR" size={14} /></button>
+      </div>
+
+      <div style={{ marginTop: 10, padding: "10px 12px", borderTop: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {user?.name || user?.email || "로그인됨"}
+          </div>
+          {user?.email && user?.name && (
+            <div style={{ fontSize: 11, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</div>
+          )}
+        </div>
+        <button
+          onClick={() => { if (confirm("로그아웃 하시겠어요?")) logout(); }}
+          title="로그아웃"
+          style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 5, padding: "6px 10px", fontSize: 12, fontWeight: 600, color: "var(--ink-2)", background: "var(--line-2)", border: "none", borderRadius: 8, cursor: "pointer" }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          로그아웃
+        </button>
       </div>
     </aside>
   );

@@ -272,3 +272,100 @@ textarea.nv-input { resize: vertical; min-height: 76px; line-height: 1.55; }
 /* progress bar */
 .nv-prog { height: 8px; border-radius: 5px; background: var(--line); overflow: hidden; }
 .nv-prog > i { display: block; height: 100%; border-radius: 5px; background: var(--green); }
+/* ============================================================
+   MOBILE RESPONSIVE (데모 navone-demo 모바일대응과 동일 패턴)
+   - ≤880px: 사이드바 → 드로어, 상단 고정바(버거) 등장
+   - ≤560px: 그리드 1열, 히어로카드 세로 스택
+   ============================================================ */
+
+/* default: mobile chrome hidden on desktop (must precede media rules) */
+.nv-mbar, .nv-backdrop { display: none; }
+
+@media (max-width: 880px) {
+  .nv-main { overflow-x: hidden; }
+  .nv-app  { grid-template-columns: 1fr; }
+
+  .nv-sb {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: 284px; max-width: 84vw;
+    z-index: 70;
+    transform: translateX(-100%);
+    transition: transform .26s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 0 48px rgba(15,20,16,.22);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  body.nv-drawer-open .nv-sb { transform: translateX(0); }
+
+  .nv-main { padding: 70px 16px 40px; }
+
+  /* fixed top bar */
+  .nv-mbar {
+    display: flex; align-items: center; gap: 10px;
+    position: fixed; top: 0; left: 0; right: 0; height: 56px;
+    padding: 0 12px 0 6px; z-index: 60;
+    background: rgba(255,255,255,.88);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nv-burger {
+    width: 42px; height: 42px; border-radius: 12px;
+    display: grid; place-items: center; color: var(--ink);
+    background: none; border: none; cursor: pointer; font-family: inherit;
+  }
+  .nv-burger:active { background: var(--line-2); }
+  .nv-mbar-word { font-size: 18px; font-weight: 800; letter-spacing: -0.03em; }
+  .nv-mbar-word .o { color: var(--green); }
+
+  /* dim backdrop */
+  .nv-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 65;
+    background: rgba(15,20,16,.42);
+    opacity: 0; pointer-events: none; transition: opacity .26s;
+    border: none; padding: 0;
+  }
+  body.nv-drawer-open .nv-backdrop { opacity: 1; pointer-events: auto; }
+  body.nv-drawer-open { overflow: hidden; }
+
+  /* segmented tabs: scroll instead of overflow */
+  .nv-seg { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .nv-seg::-webkit-scrollbar { display: none; }
+
+  /* tables: scroll horizontally inside their card */
+  .nv-card:has(.nv-tbl) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .nv-tbl { min-width: 520px; }
+
+  /* grids: 4-col → 2-col, wide split → stack */
+  .nv [style*="repeat(4"] { grid-template-columns: 1fr 1fr !important; }
+  .nv [style*="1.55fr"]   { grid-template-columns: 1fr !important; }
+
+  /* trim oversized type a touch */
+  .nv-greet-h   { font-size: 23px; }
+  .nv-ph h1     { font-size: 22px; }
+  .nv-num       { font-size: 32px; }
+  .nv-stat .big { font-size: 26px; }
+  .nv-ph        { gap: 12px; margin-bottom: 18px; }
+}
+
+/* ---- ≤560px : phone → single column everywhere ---- */
+@media (max-width: 560px) {
+  .nv-main { padding: 66px 13px 36px; }
+  .nv-card { padding: 18px 16px; }
+  .nv [style*="1fr 1fr"]  { grid-template-columns: 1fr !important; }
+  .nv [style*="repeat(4"] { grid-template-columns: 1fr 1fr !important; }
+  .nv-greet-h { font-size: 21px; }
+  .nv-num     { font-size: 28px; }
+
+  /* hero card: stack the big block over the stat rail */
+  .nv [style*="linear-gradient(120deg"] > div:last-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 18px !important;
+  }
+  /* hero stat rail → clean 2×2 (drop the 4-col divider lines) */
+  .nv [style*="linear-gradient(120deg"] [style*="repeat(4"] { gap: 8px !important; }
+  .nv [style*="linear-gradient(120deg"] [style*="repeat(4"] > * {
+    border-left: none !important;
+    padding: 12px 14px !important;
+  }
+}

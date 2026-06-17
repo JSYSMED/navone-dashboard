@@ -7,6 +7,19 @@ const inputStyle = {
   boxSizing: "border-box",
 };
 
+// CommerOne 로고 (사이드바와 동일한 마크 + 워드마크)
+function LgLogo({ sub }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginBottom: 6 }}>
+      <div style={{ width: 48, height: 48, borderRadius: 14, background: "#03C75A", display: "grid", placeItems: "center", boxShadow: "0 8px 20px rgba(3,199,90,.28)" }}>
+        <svg width="27" height="27" viewBox="0 0 64 64" fill="none"><path d="M52 20.5A24 24 0 1 0 52 43.5" stroke="#fff" strokeWidth="8" strokeLinecap="round" /><circle cx="31" cy="32" r="7.5" fill="#fff" /></svg>
+      </div>
+      <div className="lg-logo" style={{ margin: 0 }}>Commer<span style={{ color: "#03C75A" }}>One</span></div>
+      {sub && <p className="lg-sub" style={{ margin: "-6px 0 0" }}>{sub}</p>}
+    </div>
+  );
+}
+
 export default function LoginGate({ children }) {
   const [state, setState] = useState("loading"); // loading | in | out | pending
   const [user, setUser] = useState(null);
@@ -71,8 +84,7 @@ export default function LoginGate({ children }) {
     return (
       <div className="lg-wrap">
         <div className="lg-card">
-          <div className="lg-logo">CommerOne</div>
-          <p className="lg-sub">가입이 완료되었어요</p>
+          <LgLogo sub="가입이 완료되었어요" />
           <div style={{ padding: "16px 18px", background: "#FFF7E6", borderRadius: 12, margin: "8px 0 16px", textAlign: "left" }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#B7791F", marginBottom: 6 }}>승인 대기 중</div>
             <div style={{ fontSize: 13, color: "#7A6A4F", lineHeight: 1.6 }}>
@@ -92,8 +104,7 @@ export default function LoginGate({ children }) {
     return (
       <div className="lg-wrap">
         <div className="lg-card">
-          <div className="lg-logo">CommerOne</div>
-          <p className="lg-sub">스마트스토어 통합관리</p>
+          <LgLogo sub="스마트스토어 통합관리" />
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10, margin: "14px 0 4px", textAlign: "left" }}>
             {mode === "signup" && (

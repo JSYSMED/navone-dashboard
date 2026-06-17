@@ -2,26 +2,19 @@ import NvIcon from "./NvIcon";
 import { getSettings } from "../lib/api";
 import { logout } from "./LoginGate";
 
-// 6대분류 + 대시보드/설정 — 2그룹 내비게이션 (CommerOne 시안)
+// 평평한 단일 목록 내비게이션 (CommerOne 시안)
 const NV_NAV = [
   {
-    label: "운영", items: [
-      { id: "dashboard", label: "대시보드", icon: "home" },
-      { id: "price", label: "가격 관리", icon: "tag" },
-      { id: "orders", label: "판매 현황", icon: "box" },
-      { id: "settlement", label: "정산·광고 분석", icon: "trend" },
-    ]
-  },
-  {
-    label: "고객·품질", items: [
-      { id: "reviews", label: "고객응대 AI", icon: "chat", dot: true },
-      { id: "optimize", label: "상품 최적화", icon: "sparkles" },
-      { id: "group", label: "그룹상품", icon: "list" },
-      { id: "risk", label: "리스크 관리", icon: "shield" },
-    ]
-  },
-  {
     label: "", items: [
+      { id: "dashboard", label: "대시보드", icon: "home" },
+      { id: "productreg", label: "상품등록", icon: "box" },
+      { id: "price", label: "가격 관리", icon: "tag" },
+      { id: "optimize", label: "상품 최적화", icon: "sparkles" },
+      { id: "orders", label: "판매 현황", icon: "box" },
+      { id: "fulfillment", label: "주문 처리", icon: "truck" },
+      { id: "reviews", label: "고객응대", icon: "chat", dot: true },
+      { id: "risk", label: "리스크 관리", icon: "shield" },
+      { id: "settlement", label: "광고·정산 분석", icon: "trend" },
       { id: "settings", label: "설정", icon: "settings" },
     ]
   },

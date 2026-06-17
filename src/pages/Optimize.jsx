@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import NvIcon from "../components/NvIcon";
 import { NvPageHead, NvSeg, NvBanner, NvStat, NvStatRow, NvEmpty } from "../components/atoms";
 import { fetchProductDiagnosis, analyzeProduct, fetchFeatureCache, saveFeatureCache } from "../lib/api";
+import Group from "./Group";
 
 // 서버 bulk-analyze 응답 → 화면 형식 매핑
 // scores.{nameSeo,attributeCompleteness,aitems}는 {score,max,details} 중첩 객체
@@ -28,6 +29,7 @@ function mapDiag(products) {
 let _optimizeCache = null;
 
 export default function Optimize() {
+  const [view, setView] = useState("opt"); // opt | grp — 그룹상품 흡수
   const [tab, setTab] = useState("diagnose");
   const [scoreMax, setScoreMax] = useState(70);
   const [openId, setOpenId] = useState(null);
@@ -130,12 +132,17 @@ export default function Optimize() {
 
   return (
     <>
-      <NvPageHead title="상품 노출 최적화" sub="상품을 사람·검색·AI(AiTEMS) 모두에게 잘 읽히게 만들어요. 진단 → AI 보강 → 월간 갱신."
-        actions={<div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <NvPageHead title="상품 최적화" sub="상품을 사람·검색·AI(AiTEMS) 모두에게 잘 읽히게 만들어요. 진단 → AI 보강 → 월간 갱신."
+        actions={view === "opt" ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button className="nv-btn ghost sm" onClick={loadDiag} disabled={status === "loading"}><NvIcon name="refresh" size={13} /> 다시 진단</button>
           <span className="nv-pill green"><NvIcon name="sparkles" size={12} /> 월간 구독</span>
-        </div>} />
+        </div> : null} />
 
+      <NvSeg style={{ marginBottom: 20 }} value={view} onChange={setView} tabs={[["opt", "상품 최적화"], ["grp", "그룹상품"]]} />
+
+      {view === "grp" && <Group />}
+
+      {view === "opt" && (<>
       <NvSeg style={{ marginBottom: 20 }} value={tab} onChange={setTab} tabs={[["diagnose", "① 진단"], ["enrich", "② AI 보강"], ["refresh", "③ 월간 갱신"]]} />
 
       {tab === "diagnose" && (
@@ -323,6 +330,7 @@ export default function Optimize() {
           <div><NvBanner tone="amber" icon="bell">태그는 <b>월 1회만</b> 교체합니다. 너무 자주 바꾸면 어뷰징으로 의심받을 수 있어, 코어는 유지하고 트렌드 슬롯만 회전해요.</NvBanner></div>
         </>
       )}
+      </>)}
     </>
   );
 }

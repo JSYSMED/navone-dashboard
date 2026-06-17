@@ -1,24 +1,26 @@
 import { useEffect, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
+import ProductReg from "./pages/ProductReg";
 import Price from "./pages/Price";
 import Orders from "./pages/Orders";
+import Fulfillment from "./pages/Fulfillment";
 import Settlement from "./pages/Settlement";
 import Customer from "./pages/Customer";
 import Optimize from "./pages/Optimize";
-import Group from "./pages/Group";
 import Risk from "./pages/Risk";
 import Settings from "./pages/Settings";
 import LoginGate from "./components/LoginGate";
 
 const PAGES = {
   dashboard: Dashboard,
+  productreg: ProductReg,
   price: Price,
+  optimize: Optimize,
   orders: Orders,
+  fulfillment: Fulfillment,
   settlement: Settlement,
   reviews: Customer,
-  optimize: Optimize,
-  group: Group,
   risk: Risk,
   settings: Settings,
 };

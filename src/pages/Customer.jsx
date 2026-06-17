@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import NvIcon from "../components/NvIcon";
 import { NvPageHead, NvSeg, NvToggle, NvField, NvBanner, NvStat, NvStatRow, NvStars, NvEmpty } from "../components/atoms";
-import { fetchQaList, fetchInquiries, fetchReviewList } from "../lib/api";
+import { fetchReviewList } from "../lib/api";
 
 const FALLBACK_REVIEWS = [
   { id: 1, product: "샤인머스캣 1kg 특품", rating: 5, time: "12분 전", text: "포장 정말 꼼꼼하게 와서 한 알도 안 터졌어요! 당도도 진짜 높고 알도 굵어요. 다음에 또 주문할게요.", reply: "고객님, 따뜻한 후기 정말 감사드립니다 :) 한 알 한 알 정성껏 골라 포장하는 게 저희의 자부심이에요. 다음번에도 가장 좋은 머스캣으로 보내드릴게요!" },
@@ -9,11 +9,6 @@ const FALLBACK_REVIEWS = [
   { id: 3, product: "방울토마토 2kg 대저", rating: 5, time: "1시간 전", text: "달고 신선해요. 아이가 너무 잘 먹어서 또 주문했어요. 배송도 빠르고 최고!", reply: "아이가 잘 먹는다니 저희도 정말 기쁘네요! 매일 새벽에 따서 그날 바로 출고하고 있어요. 늘 가장 신선한 토마토로 보답드리겠습니다." },
   { id: 4, product: "성주 참외 2.5kg", rating: 2, time: "2시간 전", text: "받자마자 한두 개 무른 게 있었어요. 환불 부탁드립니다.", reply: "불편을 드려 진심으로 죄송합니다. 무른 상품은 바로 환불 도와드리겠습니다. 톡톡으로 상품 사진 보내주시면 즉시 처리해드릴게요." },
   { id: 5, product: "제주 한라봉 3kg", rating: 4, time: "3시간 전", text: "맛있어요. 한라봉 향이 진하고 새콤달콤 좋네요. 별 하나 뺀 건 일부 크기가 작아서요.", reply: "한라봉 좋아해 주셔서 감사합니다! 크기 편차 부분은 앞으로 더 세심히 선별해서 보내드릴게요." },
-];
-const FALLBACK_INQUIRIES = [
-  { id: "INQ001", product: "아비브 콜라겐 겔 마스크 1매", q: "이거 민감성 피부에도 괜찮을까요?", buyer: "김*희", time: "15분 전", a: "안녕하세요! 저자극 처방으로 민감성 피부에도 안심하고 사용하실 수 있습니다. 약산성(pH 5.5) 포뮬러로 자극을 최소화했어요.", status: "pending", conf: 0.94 },
-  { id: "INQ002", product: "유기농 사과 5kg 가정용", q: "배송 보통 며칠 걸리나요? 경상도인데", buyer: "이*수", time: "32분 전", a: "주문 확인 후 1~2 영업일 내 출고되며, 경상도는 출고 기준 1~2일 내 수령 가능하십니다. 총 2~4일 정도 소요돼요.", status: "approved", conf: 0.97 },
-  { id: "INQ003", product: "제주 한라봉 3kg", q: "선물용 박스도 있나요?", buyer: "박*민", time: "1시간 전", a: "네, 선물용 박스 포장을 옵션에서 선택하실 수 있어요(+2,000원). 메시지 카드도 동봉 가능합니다.", status: "pending", conf: 0.91 },
 ];
 
 function mapReviews(rows) {
@@ -27,18 +22,6 @@ function mapReviews(rows) {
     replyStatus: r.replyStatus || r.reply_status || (r.replyText || r.reply_text ? "replied" : "pending"),
   }));
 }
-function mapInquiries(rows) {
-  return (rows || []).map((q, i) => ({
-    id: q.id || q.inquiryNo || "INQ" + (i + 1),
-    product: q.product_name || q.productName || q.product || "—",
-    q: q.question || q.q || q.content || "",
-    buyer: q.buyer || q.writerName || "—",
-    time: q.created_at ? rel(q.created_at) : (q.time || ""),
-    a: q.ai_answer || q.answer || q.a || "",
-    status: q.status === "ANSWERED" || q.answered ? "approved" : "pending",
-    conf: q.conf != null ? +q.conf : 0.9,
-  }));
-}
 function rel(iso) {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
   if (diff < 60) return "방금 전";
@@ -46,6 +29,22 @@ function rel(iso) {
   if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
   return `${Math.floor(diff / 86400)}일 전`;
 }
+
+// ───── 문의 응답 목업 데이터 (실제 API 없음) ─────
+const CAT_TONE = { "배송": "blue", "상품": "green", "교환·반품": "red", "결제": "amber", "기타": "gray" };
+const INQ_CATS = ["전체", "배송", "상품", "교환·반품", "결제", "기타"];
+const INQUIRIES = [
+  { id: "INQ2051", cat: "배송", product: "샤인머스캣 1kg 특품", summary: "제주도 배송 가능 여부·추가 배송비 문의", raw: "제주도인데 배송 가능한가요? 도서산간 추가비용 있으면 얼마인지 궁금합니다.", buyer: "김*희", time: "8분 전", draft: "네, 제주도도 배송 가능합니다! 도서산간 추가 배송비 3,000원이 발생하며 결제 시 자동 합산돼요. 출고 후 보통 2~3일 내 도착합니다." },
+  { id: "INQ2050", cat: "상품", product: "유기농 사과 5kg 가정용", summary: "당도 수준·부사 품종 여부 문의", raw: "사과 당도가 어느정도 되나요? 그리고 부사 맞나요?", buyer: "이*수", time: "21분 전", draft: "안녕하세요! 보내드리는 사과는 부사 품종으로 당도 14~15Brix 내외의 고당도 상품입니다. 아삭한 식감과 풍부한 과즙이 특징이에요." },
+  { id: "INQ2049", cat: "교환·반품", product: "성주 참외 2.5kg", summary: "일부 무름 — 교환·환불 요청", raw: "어제 받았는데 두 개가 물러서 왔어요. 교환이나 환불 가능할까요?", buyer: "박*민", time: "44분 전", draft: "불편을 드려 죄송합니다. 무른 상품은 바로 처리 도와드릴게요. 상품 사진을 첨부해 주시면 환불 또는 재발송 중 원하시는 방법으로 즉시 처리해 드리겠습니다." },
+  { id: "INQ2048", cat: "결제", product: "제주 한라봉 3kg", summary: "법인카드 결제 — 세금계산서 발행 여부", raw: "법인카드로 결제했는데 세금계산서 발행 가능한가요?", buyer: "최*서", time: "1시간 전", draft: "네, 세금계산서 발행 가능합니다. 사업자등록증 사본과 발행 정보를 톡톡으로 보내주시면 영업일 기준 1~2일 내 발행해 드려요." },
+  { id: "INQ2047", cat: "기타", product: "방울토마토 2kg 대저", summary: "선물 포장·메시지 카드 동봉 가능 여부", raw: "선물로 보내려는데 포장이랑 카드 동봉 되나요?", buyer: "한*글", time: "2시간 전", draft: "네 :) 선물 포장(+2,000원)과 메시지 카드 동봉 모두 가능합니다. 주문 시 요청사항에 메시지 내용을 남겨주시면 정성껏 동봉해 드릴게요." },
+];
+const INQ_DONE = [
+  { id: "INQ2042", cat: "배송", product: "샤인머스캣 1kg 특품", summary: "배송 출발 문의 — 당일 출고 안내", time: "오늘 10:12", via: "텔레그램" },
+  { id: "INQ2039", cat: "상품", product: "유기농 사과 5kg 가정용", summary: "보관 방법 문의 — 냉장보관 안내", time: "오늘 09:41", via: "텔레그램" },
+  { id: "INQ2035", cat: "결제", product: "제주 한라봉 3kg", summary: "결제 오류 문의 — 재결제 안내", time: "어제 18:23", via: "직접 답변" },
+];
 
 export default function Customer() {
   const [tab, setTab] = useState("rev");
@@ -55,10 +54,15 @@ export default function Customer() {
   const [sel, setSel] = useState(new Set([1, 2, 3, 5]));
 
   const [reviews, setReviews] = useState([]);
-  const [inquiries, setInquiries] = useState([]);
   const [revStatus, setRevStatus] = useState("loading");  // loading|ok|empty|error
-  const [qaStatus, setQaStatus] = useState("loading");
   const [revFilter, setRevFilter] = useState("pending");  // pending|replied|all
+
+  // 문의 응답(목업) 상태
+  const [inqFilter, setInqFilter] = useState("전체");
+  const [inqOpen, setInqOpen] = useState(new Set());
+  const [drafts, setDrafts] = useState(() => Object.fromEntries(INQUIRIES.map(i => [i.id, i.draft])));
+  const [doneSearch, setDoneSearch] = useState("");
+  const [toast, setToast] = useState("");
 
   useEffect(() => {
     fetchReviewList("all", 100).then(d => {
@@ -66,39 +70,23 @@ export default function Customer() {
       if (m.length) { setReviews(m); setSel(new Set(m.filter(r => r.rating >= 3 && r.replyStatus !== "replied").map(r => r.id))); setRevStatus("ok"); }
       else { setReviews([]); setRevStatus("empty"); }
     }).catch(() => { setReviews(FALLBACK_REVIEWS); setRevStatus("error"); });
-    // QA + inquiry 합쳐서 표시. 서버는 최상위(inquiries/items)로 줌 (data 래핑 없음).
-    Promise.allSettled([fetchQaList(), fetchInquiries()]).then(([qa, inq]) => {
-      const anyError = qa.status === "rejected" && inq.status === "rejected";
-      const rows = [
-        ...(qa.status === "fulfilled" ? (qa.value?.items || qa.value?.list || qa.value?.questions || []) : []),
-        ...(inq.status === "fulfilled" ? (inq.value?.inquiries || inq.value?.list || []) : []),
-      ];
-      const m = mapInquiries(rows);
-      if (m.length) { setInquiries(m); setQaStatus("ok"); }
-      else if (anyError) { setInquiries(FALLBACK_INQUIRIES); setQaStatus("error"); }
-      else { setInquiries([]); setQaStatus("empty"); }
-    });
   }, []);
 
   const toggle = id => { const n = new Set(sel); n.has(id) ? n.delete(id) : n.add(id); setSel(n); };
   const ratingTag = r => r >= 4 ? ["감사", "green"] : r >= 3 ? ["공감·개선", "amber"] : ["사과·해결", "red"];
   const avgRating = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "—";
 
-  const chats = [
-    { time: "14:23", q: "샤인머스캣 오늘 주문하면 언제 받을 수 있어요?", a: "오늘 오후 2시 이전 주문건은 당일 출고되어 보통 내일~모레 도착합니다. 새벽배송은 운영하지 않는 점 참고 부탁드려요.", fwd: false },
-    { time: "14:18", q: "사과 5kg 환불하고 싶어요", a: "환불 관련 문의는 판매자가 직접 확인해드릴 수 있도록 전달드렸습니다. 잠시만 기다려 주세요.", fwd: true },
-    { time: "13:54", q: "방울토마토 당일 출고 되나요?", a: "네 :) 오후 2시 전 주문이시면 오늘 출고됩니다. 결제 완료 기준이라 결제까지 마쳐주세요!", fwd: false },
-    { time: "13:42", q: "선물용으로 포장 가능한가요?", a: "선물용 박스 포장이 필요하시면 옵션에서 선물포장(+2,000원)을 선택해주세요.", fwd: false },
-    { time: "12:58", q: "법인 카드로 결제했는데 세금계산서 발행되나요?", a: "세금계산서 발행 관련해서는 판매자가 직접 확인해드리겠습니다. 곧 답변드릴게요.", fwd: true },
-    { time: "11:48", q: "참외 박스에 흠집난 것 있나요?", a: "박스 외관은 운송 중 약간 눌림이 있을 수 있지만, 상품 자체에는 영향이 없도록 이중 포장해 보내드립니다.", fwd: false },
-  ];
+  const toggleInq = id => setInqOpen(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const fakeToast = msg => { setToast(msg); setTimeout(() => setToast(""), 2600); };
+  const shownInq = inqFilter === "전체" ? INQUIRIES : INQUIRIES.filter(i => i.cat === inqFilter);
+  const shownDone = INQ_DONE.filter(d => !doneSearch || (d.product + d.summary).includes(doneSearch));
 
   return (
     <>
-      <NvPageHead title="고객응대 AI" sub="리뷰 답글, 톡톡 문의, Q&A를 AI가 초안부터 응답까지 도와드려요."
+      <NvPageHead title="고객응대" sub="리뷰 답글과 고객 문의를 AI가 도와드려요."
         actions={tab === "rev" && <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 13.5, fontWeight: 700, color: autoReply ? "var(--green-ink)" : "var(--ink-3)" }}>자동 답글</span><NvToggle on={autoReply} onChange={setAutoReply} /></div>} />
 
-      <NvSeg style={{ marginBottom: 20 }} value={tab} onChange={setTab} tabs={[["rev", "리뷰 답글"], ["talk", "톡톡 AI 응답"], ["qna", "Q&A · CS 답변"]]} />
+      <NvSeg style={{ marginBottom: 20 }} value={tab} onChange={setTab} tabs={[["rev", "리뷰 답글"], ["inq", "문의 응답"]]} />
 
       {tab === "rev" && (
         <>
@@ -187,90 +175,99 @@ export default function Customer() {
         </>
       )}
 
-      {tab === "talk" && (
+      {tab === "inq" && (
         <>
-          <NvStatRow cols={3}>
-            <NvStat label="오늘 자동 응답" value="42" unit="건" icon="chat" tone="green" sub="응답률 94.2%" subTone="up" />
-            <NvStat label="판매자 전달" value="3" unit="건" icon="user" tone="amber" sub="확인 필요" subTone="warn" />
-            <NvStat label="평균 응답 시간" value="8" unit="초" icon="clock" tone="blue" sub="즉시 응답" subTone="up" />
-          </NvStatRow>
-          <div className="nv-card" style={{ marginBottom: 16 }}>
-            <div className="nv-card-h"><h3 className="nv-card-t">스토어 기본 정보</h3><span className="nv-card-hint">AI가 답변에 활용합니다</span></div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <NvField label="배송 소요일"><textarea className="nv-input" rows="2" defaultValue="오후 2시 이전 주문 시 당일 출고, 보통 1~2일 내 도착합니다." /></NvField>
-              <NvField label="반품 정책"><textarea className="nv-input" rows="2" defaultValue="신선식품 특성상 단순 변심 반품은 어렵습니다. 상품 하자 시 사진과 함께 톡톡으로 문의 부탁드립니다." /></NvField>
-              <NvField label="교환 가능 기간"><textarea className="nv-input" rows="2" defaultValue="수령 후 24시간 이내 사진 첨부 시 교환 가능합니다." /></NvField>
-              <NvField label="주요 안내사항"><textarea className="nv-input" rows="2" defaultValue="주말/공휴일은 출고가 어렵습니다. 새벽배송은 제공하지 않습니다." /></NvField>
-            </div>
+          <div style={{ marginBottom: 16 }}>
+            <NvBanner tone="green" icon="sparkles">
+              <b>문의가 들어오면 AI가 분류·요약하고 텔레그램으로 보내드려요.</b> 사장님은 텔레그램에서 톡하듯 답장만 하면 네이버에 자동 등록돼요.
+            </NvBanner>
           </div>
-          <div className="nv-card">
-            <div className="nv-card-h"><h3 className="nv-card-t">상담 이력</h3><span className="nv-card-hint">최근 6건</span></div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {chats.map((c, i) => (
-                <div key={i} style={{ padding: "14px 16px", borderRadius: 14, background: c.fwd ? "var(--amber-soft)" : "var(--line-2)", border: c.fwd ? "1px solid #F6DDB8" : "1px solid transparent" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
-                    <span className="mono" style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{c.time}</span>
-                    <div style={{ width: 24, height: 24, borderRadius: 8, background: "#fff", border: "1px solid var(--line)", display: "grid", placeItems: "center", color: "var(--ink-2)" }}><NvIcon name="user" size={13} /></div>
-                    <span style={{ fontSize: 13, flex: 1 }}>{c.q}</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
-                    <div className={"nv-ic-tile " + (c.fwd ? "amber" : "green")} style={{ width: 24, height: 24, borderRadius: 8 }}><NvIcon name={c.fwd ? "user" : "sparkles"} size={12} /></div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, lineHeight: 1.55 }}>{c.a}</div>
-                      <span className={"nv-pill " + (c.fwd ? "amber" : "green")} style={{ marginTop: 7 }}>{c.fwd ? "판매자 전달" : "자동 응답"}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
 
-      {tab === "qna" && (
-        <>
           <NvStatRow cols={3}>
-            <NvStat label="오늘 문의" value={inquiries.length} unit="건" icon="chat" tone="green" sub="AI 답변 생성됨" subTone="up" />
-            <NvStat label="답변 대기" value={inquiries.filter(i => i.status === "pending").length} unit="건" icon="bell" tone="amber" sub="검수 후 등록" subTone="warn" />
-            <NvStat label="평균 신뢰도" value={inquiries.length ? (inquiries.reduce((s, i) => s + i.conf, 0) / inquiries.length * 100).toFixed(0) : "—"} unit="%" icon="shield" tone="blue" sub="AI 답변 정확도" subTone="up" />
+            <NvStat label="미응답 문의" value={INQUIRIES.length} unit="건" icon="chat" tone="amber" sub="AI 초안 준비됨" subTone="warn" />
+            <NvStat label="오늘 처리" value="12" unit="건" icon="check" tone="green" sub="텔레그램·직접 답변" subTone="up" />
+            <NvStat label="평균 응답 시간" value="6" unit="분" icon="clock" tone="blue" sub="문의 접수 → 답변" subTone="up" />
           </NvStatRow>
-          {qaStatus === "error" && <div style={{ marginBottom: 14 }}><NvBanner tone="amber" icon="bell">문의 데이터를 불러오지 못해 예시를 표시합니다.</NvBanner></div>}
-          {qaStatus === "empty" ? (
-            <NvEmpty icon="check" title="답변할 문의가 없어요" desc="새 Q&A·CS 문의가 들어오면 AI가 답변 초안을 만들어 여기에 표시됩니다." />
-          ) : qaStatus === "loading" ? (
-            <div style={{ padding: "44px 0", textAlign: "center", color: "var(--ink-3)", fontSize: 13 }}>불러오는 중…</div>
+
+          {/* 분류 필터 */}
+          <NvSeg style={{ marginBottom: 16 }} value={inqFilter} onChange={setInqFilter} tabs={INQ_CATS.map(c => [c, c])} />
+
+          {/* 문의 리스트 */}
+          {shownInq.length === 0 ? (
+            <NvEmpty icon="check" title="해당 분류의 미응답 문의가 없어요" desc="다른 분류를 선택하거나 전체를 확인해 보세요." tone="violet" />
           ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {inquiries.map(q => {
-              const done = q.status === "approved";
+            {shownInq.map(q => {
+              const open = inqOpen.has(q.id);
               return (
                 <div key={q.id} className="nv-card">
                   <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 10 }}>
-                    <span className="nv-pill gray">{q.product}</span>
-                    <span className="nv-pill blue mono">신뢰도 {(q.conf * 100).toFixed(0)}%</span>
+                    <span className={"nv-pill " + (CAT_TONE[q.cat] || "gray")}>{q.cat}</span>
+                    <span style={{ fontSize: 13.5, fontWeight: 700 }}>{q.product}</span>
                     <span style={{ marginLeft: "auto", fontSize: 11.5, color: "var(--ink-3)" }}>{q.buyer} · {q.time}</span>
                   </div>
-                  <div style={{ display: "flex", gap: 9, marginBottom: 12 }}>
+
+                  <div style={{ display: "flex", gap: 9, marginBottom: 10 }}>
                     <div style={{ width: 28, height: 28, borderRadius: 9, background: "var(--line-2)", display: "grid", placeItems: "center", color: "var(--ink-2)", flexShrink: 0 }}><NvIcon name="user" size={14} /></div>
-                    <div style={{ fontSize: 14, fontWeight: 600, paddingTop: 4 }}>{q.q}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, paddingTop: 4 }}>{q.summary}</div>
+                      <button onClick={() => toggleInq(q.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 6, fontSize: 12, fontWeight: 600, color: "var(--ink-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        <NvIcon name={open ? "arrowUp" : "arrowDown"} size={13} /> 원문 {open ? "접기" : "보기"}
+                      </button>
+                      {open && <div style={{ marginTop: 8, padding: "11px 14px", borderRadius: 11, background: "var(--line-2)", fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.6 }}>"{q.raw}"</div>}
+                    </div>
                   </div>
-                  {q.a && <div style={{ background: "var(--green-tint)", borderRadius: 14, padding: "13px 16px", borderLeft: "3px solid var(--green)" }}>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--green-ink)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><NvIcon name="sparkles" size={12} /> AI 생성 답변</div>
-                    <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>{q.a}</div>
-                  </div>}
-                  <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end", alignItems: "center" }}>
-                    {done ? <span className="nv-pill green"><NvIcon name="check" size={12} /> 등록 완료</span> : <>
-                      <button className="nv-btn ghost sm"><NvIcon name="refresh" size={12} /> 다시 생성</button>
-                      <button className="nv-btn ghost sm">수정</button>
-                      <button className="nv-btn primary sm"><NvIcon name="check" size={13} /> 답변 등록</button>
-                    </>}
+
+                  <NvField>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--green-ink)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><NvIcon name="sparkles" size={12} /> AI 답변 초안</div>
+                    <textarea className="nv-input" rows="3" value={drafts[q.id]} onChange={e => setDrafts(d => ({ ...d, [q.id]: e.target.value }))} style={{ lineHeight: 1.6 }} />
+                  </NvField>
+
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                    <button className="nv-btn ghost sm" onClick={() => { setDrafts(d => ({ ...d, [q.id]: q.draft })); fakeToast("AI 초안을 다시 생성했어요."); }}><NvIcon name="refresh" size={12} /> 다시 생성</button>
+                    <button className="nv-btn ghost sm" onClick={() => fakeToast("답변을 등록했어요. (목업)")}>여기서 답변</button>
+                    <button className="nv-btn primary sm" onClick={() => fakeToast("문의에 답변을 등록했어요. 네이버에 자동 반영돼요.")}><NvIcon name="send" size={13} /> 문의 답변하기</button>
                   </div>
                 </div>
               );
             })}
           </div>
           )}
+
+          {/* 처리 완료 이력 */}
+          <div className="nv-card" style={{ marginTop: 16 }}>
+            <div className="nv-card-h" style={{ flexWrap: "wrap", gap: 10 }}>
+              <h3 className="nv-card-t">처리 완료 이력 <span className="nv-card-hint" style={{ fontWeight: 500 }}>{INQ_DONE.length}건</span></h3>
+              <input className="nv-input" value={doneSearch} onChange={e => setDoneSearch(e.target.value)} placeholder="상품·내용 검색" style={{ width: 220 }} />
+            </div>
+            {shownDone.length === 0 ? (
+              <div style={{ padding: "28px 0", textAlign: "center", color: "var(--ink-3)", fontSize: 13 }}>검색 결과가 없어요.</div>
+            ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {shownDone.map(d => (
+                <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 12, background: "var(--line-2)" }}>
+                  <span className={"nv-pill " + (CAT_TONE[d.cat] || "gray")}>{d.cat}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.product}</div>
+                    <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 1 }}>{d.summary}</div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <span className="nv-pill green"><NvIcon name="check" size={11} /> {d.via}</span>
+                    <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 4 }}>{d.time}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            )}
+          </div>
         </>
+      )}
+
+      {/* 가짜 토스트 */}
+      {toast && (
+        <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 200, display: "flex", alignItems: "center", gap: 9, padding: "13px 20px", borderRadius: 14, background: "var(--ink)", color: "#fff", fontSize: 13.5, fontWeight: 700, boxShadow: "0 10px 30px rgba(0,0,0,.25)", maxWidth: "90vw" }}>
+          <NvIcon name="check" size={16} /> {toast}
+        </div>
       )}
     </>
   );

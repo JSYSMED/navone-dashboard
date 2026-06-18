@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import NvIcon from "../components/NvIcon";
 import { NvPageHead, NvSeg, NvBanner, NvStat, NvStatRow, NvEmpty } from "../components/atoms";
 import CostManager from "../components/CostManager";
-import { fetchSettlementDaily, fetchMarginRank } from "../lib/api";
+import { fetchSettlementDaily, fetchMarginRank, fetchCommissionRoi } from "../lib/api";
 
 const won = v => (Number(v) || 0).toLocaleString("ko-KR") + "원";
 const man = v => ((Number(v) || 0) / 10000).toFixed(0) + "만";
@@ -63,8 +63,9 @@ export default function Settlement() {
 
   const [daily, setDaily] = useState(FALLBACK_DAILY);
   const [margin, setMargin] = useState(FALLBACK_MARGIN);
+  const [roi, setRoi] = useState(null);          // 수수료 외부유입 ROI (실데이터)
   const [loading, setLoading] = useState(true);
-  const [fb, setFb] = useState({ daily: false, margin: false });
+  const [fb, setFb] = useState({ daily: false, margin: false, roi: false });
   const [marginEmpty, setMarginEmpty] = useState(false); // 서버 응답은 정상이나 데이터 0 (원가 미입력)
 
   const load = async () => {
@@ -88,6 +89,13 @@ export default function Settlement() {
         setMarginEmpty(true); setFb(s => ({ ...s, margin: false }));
       }
     } catch { setFb(s => ({ ...s, margin: true })); }
+    try {
+      const r = await fetchCommissionRoi();
+      // totalInterlockBase가 있어야 의미 있는 분석 (유입 수수료 데이터 존재)
+      if (r && (r.totalInterlockBase > 0 || (r.feeMix && r.feeMix.length))) {
+        setRoi(r); setFb(s => ({ ...s, roi: false }));
+      } else setFb(s => ({ ...s, roi: true }));
+    } catch { setFb(s => ({ ...s, roi: true })); }
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -97,8 +105,8 @@ export default function Settlement() {
   const tDed = daily.reduce((s, d) => s + d.commission + d.ad + d.delivery + d.ret, 0);
   const dedRate = tSales ? (tDed / tSales * 100).toFixed(1) : "0.0";
 
-  // 수수료 비중 (정산 차감 기반 — 데이터 없으면 시안 더미)
-  const fees = [
+  // 수수료 구성 도넛 — 서버 feeMix(실데이터) 우선, 없으면 시안 더미
+  const FALLBACK_FEES = [
     { name: "Npay 결제 수수료", val: 412000, color: "#03C75A" },
     { name: "매출연동 수수료", val: 298000, color: "#2E7CF6" },
     { name: "무이자할부 수수료", val: 86000, color: "#7C5CFC" },
@@ -106,7 +114,10 @@ export default function Settlement() {
     { name: "구매·리뷰 적립", val: 142000, color: "#EC6699" },
     { name: "반품안심케어", val: 38000, color: "#94A3B8" },
   ];
+  const feesReal = roi?.feeMix?.length ? roi.feeMix : null;
+  const fees = feesReal || FALLBACK_FEES;
   const feeTotal = fees.reduce((s, f) => s + f.val, 0);
+  const feeIsReal = !!feesReal;
 
   const adKw = [
     { kw: "샤인머스캣", cost: 84000, conv: 62, sales: 1532000, roas: 1824, judge: "우수" },
@@ -185,16 +196,40 @@ export default function Settlement() {
         </>
       )}
 
-      {tab === "fee" && (
+      {tab === "fee" && (() => {
+        const man1 = v => ((Number(v) || 0) / 10000).toFixed(1).replace(/\.0$/, "") + "만";
+        const pct1 = v => v == null ? "—" : (v * 100).toFixed(2) + "%";
+        const extShare = roi?.externalSharePct ?? null;
+        const intShare = roi?.internalSharePct ?? (extShare != null ? +(100 - extShare).toFixed(1) : null);
+        const g = roi?.growthIf || null;
+        const sv = roi?.savingsIf || null;
+        // 외부유입 신규 매출 시나리오 (서버 growthIf 우선, 없으면 비활성)
+        const growthTiers = g ? [
+          { tag: "+10%", ...g.plus10 },
+          { tag: "+20%", ...g.plus20 },
+          { tag: "+30%", ...g.plus30 },
+        ] : [];
+        return (
         <>
-          <NvBanner tone="amber" icon="bell"><b>이번 달 쿠폰 지출이 지난달 대비 40% 증가</b>했어요. 혜택 효율을 확인해 보세요.</NvBanner>
+          {fb.roi
+            ? <NvBanner tone="amber" icon="bell">수수료 상세 데이터를 불러오지 못해 <b>예시</b>를 표시합니다. 동기화를 눌러 다시 시도해 주세요. (실 호출은 집 고정 IP 필요)</NvBanner>
+            : <NvBanner tone="green" icon="bolt"><b>유입 경로별 수수료를 실데이터로 분석했어요.</b> 외부유입은 마케팅 수수료(~0.91%)라 내부유입(~2.73%)보다 훨씬 쌉니다.</NvBanner>}
+
+          {/* 내부 vs 외부 유입 요약 */}
+          <NvStatRow cols={4}>
+            <NvStat label="내부유입 비중" value={intShare != null ? intShare : "—"} unit={intShare != null ? "%" : ""} icon="home" tone="blue" sub="네이버 내부 노출" subTone="warn" />
+            <NvStat label="외부유입 비중" value={extShare != null ? extShare : "—"} unit={extShare != null ? "%" : ""} icon="trend" tone="green" sub="블로그·광고·외부 유입" subTone="up" />
+            <NvStat label="내부 실효 수수료율" value={roi ? pct1(roi.internal.rate ?? roi.refRates.internal) : "—"} icon="tag" tone="amber" sub="비싼 쪽" subTone="warn" />
+            <NvStat label="외부 실효 수수료율" value={roi ? pct1(roi.external.rate ?? roi.refRates.external) : "—"} icon="bolt" tone="green" sub="싼 쪽" subTone="up" />
+          </NvStatRow>
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
             <div className="nv-card">
-              <div className="nv-card-h"><h3 className="nv-card-t">수수료·혜택 비중</h3><span className="nv-card-hint">합계 {won(feeTotal)}</span></div>
+              <div className="nv-card-h"><h3 className="nv-card-t">수수료 구성</h3><span className="nv-card-hint">{feeIsReal ? "실데이터 · 합계 " + won(feeTotal) : "예시 · 합계 " + won(feeTotal)}</span></div>
               <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
                 <svg viewBox="0 0 140 140" style={{ width: 140, height: 140, flexShrink: 0 }}>
                   <g transform="rotate(-90 70 70)">{donut.map((d, i) => <circle key={i} cx="70" cy="70" r={R} fill="none" stroke={d.color} strokeWidth="20" strokeDasharray={(d.frac * C) + " " + C} strokeDashoffset={-d.start * C} />)}</g>
-                  <text x="70" y="66" textAnchor="middle" fontSize="11" fill="var(--ink-3)">총 차감</text>
+                  <text x="70" y="66" textAnchor="middle" fontSize="11" fill="var(--ink-3)">총 수수료</text>
                   <text x="70" y="84" textAnchor="middle" fontSize="15" fontWeight="800" fill="var(--ink)">{man(feeTotal)}원</text>
                 </svg>
                 <div style={{ flex: 1, minWidth: 180 }}>
@@ -209,25 +244,58 @@ export default function Settlement() {
                 </div>
               </div>
             </div>
+
+            {/* 외부유입을 늘리면? — 매출증가(증대) + 수수료절약(전환) */}
             <div className="nv-card">
-              <div className="nv-card-h"><h3 className="nv-card-t">혜택 효율 분석</h3><span className="nv-card-hint">쿠폰·적립 ROI</span></div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ padding: "15px 17px", borderRadius: 14, background: "var(--green-tint)" }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700 }}>스토어 쿠폰</div>
-                  <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 4 }}>22.4만원 지출 → 매출 증가 68만원</div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "var(--green-ink)", marginTop: 5 }}>ROI 304%</div>
-                </div>
-                <div style={{ padding: "15px 17px", borderRadius: 14, background: "var(--line-2)" }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700 }}>리뷰 적립</div>
-                  <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 4 }}>14.2만원 → 리뷰 284건 확보</div>
-                  <div style={{ fontSize: 15, fontWeight: 800, marginTop: 5 }}>리뷰당 500원</div>
-                </div>
-                <div style={{ padding: "13px 16px", borderRadius: 12, border: "1px dashed var(--line)", fontSize: 12.5, color: "var(--ink-2)" }}>혜택을 10% 줄이면 → 월 마진 <b style={{ color: "var(--green-ink)" }}>약 +40만원</b> 시뮬레이션</div>
+              <div className="nv-card-h"><h3 className="nv-card-t">외부유입을 늘리면?</h3><span className="nv-card-hint">신규 매출 시뮬</span></div>
+              <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.55, marginBottom: 12 }}>
+                외부유입(블로그·외부광고·가격비교 유입)은 수수료가 <b style={{ color: "var(--green-ink)" }}>{roi ? pct1(roi.external.rate ?? roi.refRates.external) : "0.91%"}</b>로 내부유입보다 쌉니다. 외부에서 매출을 더 만들면 <b>대부분 그대로 남아요.</b>
               </div>
+              {growthTiers.length ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {growthTiers.map((t, i) => (
+                    <div key={i} style={{ padding: "13px 15px", borderRadius: 13, background: i === 1 ? "var(--green-tint)" : "var(--line-2)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>외부유입 {t.tag} 늘리면</span>
+                        <span style={{ fontSize: 12, color: "var(--ink-3)" }}>매출 +{man1(t.extraSales)}원</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                        <span style={{ fontSize: 17, fontWeight: 800, color: "var(--green-ink)" }}>순증 약 +{man1(t.extraNet)}원</span>
+                        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>내부보다 수수료 {man1(t.feeEdge)}원 덜 냄</span>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>* 유입 귀속 매출 기준 what-if 시나리오. 전환율은 동일 가정.</div>
+                </div>
+              ) : (
+                <div style={{ padding: "13px 16px", borderRadius: 12, border: "1px dashed var(--line)", fontSize: 12.5, color: "var(--ink-2)" }}>
+                  수수료 상세 데이터가 모이면 외부유입 신규 매출 시뮬을 보여드려요.
+                </div>
+              )}
             </div>
           </div>
+
+          {/* 이미 들어오는 매출을 외부 경로로 — 수수료 절약(전환) */}
+          {sv && (
+            <div className="nv-card" style={{ marginTop: 16 }}>
+              <div className="nv-card-h"><h3 className="nv-card-t">지금 매출을 외부 경로로 돌리면 (수수료 절약)</h3><span className="nv-card-hint">전환 시뮬 · 이번 달 기준</span></div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+                {[["내부유입 25% 전환", sv.shift25], ["50% 전환", sv.shift50], ["100% 전환", sv.shift100]].map(([lab, v], i) => (
+                  <div key={i} style={{ padding: "14px 16px", borderRadius: 13, background: "var(--green-tint)", textAlign: "center" }}>
+                    <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginBottom: 5 }}>{lab}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "var(--green-ink)" }}>−{man1(v)}원</div>
+                    <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 3 }}>수수료 절약</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 12, lineHeight: 1.55 }}>
+                같은 매출이라도 외부유입 경로로 들어오면 매출연동 수수료가 <b>{roi ? pct1(roi.refRates.internal) : "2.73%"} → {roi ? pct1(roi.refRates.external) : "0.91%"}</b>로 떨어집니다. 외부 채널(블로그/카페/인스타·외부광고)을 키울수록 같은 매출에서 정산금이 더 남아요.
+              </div>
+            </div>
+          )}
         </>
-      )}
+        );
+      })()}
 
       {tab === "margin" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

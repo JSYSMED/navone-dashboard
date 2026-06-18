@@ -243,8 +243,12 @@ export async function fetchSettlementDaily() {
 // 정산 — 마진율 랭킹 ( settlement/margin-rank )
 export const fetchMarginRank = () => apiGet("settlement/margin-rank").then((d) => d.data);
 
-// 정산 — 수수료 ROI ( settlement/commission-roi )
-export const fetchCommissionRoi = () => apiGet("settlement/commission-roi").then((d) => d.data);
+// 정산 — 수수료 ROI / 외부유입 분석 ( settlement/commission-roi )
+export async function fetchCommissionRoi() {
+  const { start, end } = monthRange();
+  const d = await apiGet("settlement/commission-roi", { start, end });
+  return d.data; // { range, internal, external, externalSharePct, feeMix, savingsIf, growthIf, ... }
+}
 
 // 주의: fetchClaims / fetchPenaltyScan / fetchOrders / fetchQaList /
 // fetchInquiries / fetchAdEfficiency 는 위쪽(공통 GET 블록)에 이미 정의됨.

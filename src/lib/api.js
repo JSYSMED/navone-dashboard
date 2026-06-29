@@ -211,6 +211,36 @@ export const fetchProductDiagnosis = (limit = 50) =>
 export const fetchReviewList = (status = "pending", limit = 50) =>
   apiGet("review/list", { status, limit });
 
+// 리뷰 AI 답글 생성 — POST /api/review-reply (OpenAI gpt-4o-mini)
+// review: 화면의 리뷰 객체 {text|content, rating, product|productName, photoCount}
+// storeContext: { tone, customPrompt, storeName }
+// 반환: { reply, model, tokens }
+export async function generateReviewReply(review, storeContext = {}) {
+  const res = await fetch(`${API_BASE}/api/review-reply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      review: {
+        content: review.text || review.content || "",
+        rating: review.rating || 0,
+        productName: review.product || review.productName || "",
+        photoCount: review.photoCount || 0,
+      },
+      storeContext: {
+        storeName: storeContext.storeName || "우리 스토어",
+        tone: storeContext.tone || "정중",
+        customPrompt: storeContext.customPrompt || "",
+      },
+      licenseKey: getLicenseKey(),
+    }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || `답글 생성 실패 (${res.status})`);
+  }
+  return res.json(); // { reply, model, tokens }
+}
+
 // 금액/숫자 포맷 (won은 formatPrice의 별칭, 페이지에서 자주 쓰임)
 export function won(n) {
   return formatPrice(n);
@@ -297,3 +327,14 @@ export const fetchSalesStatus = ({ from, to, rangeType } = {}) => {
   if (rangeType) params.rangeType = rangeType;
   return apiGet("order/sales-status", params);
 };
+
+// ===== 상품등록 AI (product-ai/detail-*) =====
+// 등록정보 추정 (빠름). 반환: { ai_estimated, seller_required, _notice_labels, missing }
+export async function detailRegistration({ desc, image }) {
+  return apiSend("product-ai/detail-registration", { desc, image }, "POST");
+}
+// 상세페이지+등록정보 생성 (연출컷 포함, 느림 — 수십 초).
+// 반환: { profile, registration, html, genLog }
+export async function detailGenerate({ desc, template = "point_light", image }) {
+  return apiSend("product-ai/detail-generate", { desc, template, image }, "POST");
+}

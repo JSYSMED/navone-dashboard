@@ -48,7 +48,7 @@ export default function Dashboard({ onNav = () => {} }) {
       </div>
 
       {/* 오늘의 브리핑 밴드 */}
-      <div style={{ position: "relative", overflow: "hidden", borderRadius: 22, padding: "24px 28px", marginBottom: 18, background: "linear-gradient(120deg, #03C75A 0%, #04A94E 100%)", boxShadow: "0 12px 30px rgba(3,160,76,.26)" }}>
+      <div style={{ position: "relative", overflow: "hidden", borderRadius: 22, padding: "24px 28px", marginBottom: 30, background: "linear-gradient(120deg, #03C75A 0%, #04A94E 100%)", boxShadow: "0 12px 30px rgba(3,160,76,.26)" }}>
         <div style={{ position: "absolute", right: -30, top: -50, width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,.10)" }} />
         <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 32, flexWrap: "wrap" }}>
           <div style={{ flexShrink: 0 }}>
@@ -69,13 +69,13 @@ export default function Dashboard({ onNav = () => {} }) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: 18, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: 30, alignItems: "start" }}>
         <div className="nv-card" style={{ padding: "20px 22px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
             <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, letterSpacing: "-0.03em", display: "flex", alignItems: "center", gap: 8 }}>오늘 할 일 <span className="nv-pill red"><span className="pdot" />{tasks.length}</span></h2>
             <span className="nv-card-hint">사장님 확인이 필요해요 · 긴급한 순서</span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 14 }}>
             {tasks.map((t, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 17px", borderRadius: 16, background: t.primary ? "var(--red-soft)" : "var(--line-2)", border: `1px solid ${t.primary ? "#F7D4CF" : "var(--line)"}` }}>
                 <div className={"nv-ic-tile " + t.tone}><NvIcon name={t.icon} size={20} /></div>

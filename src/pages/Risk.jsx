@@ -92,7 +92,7 @@ export default function Risk() {
   return (
     <>
       <NvPageHead title="리스크 관리" sub="페널티로 이어질 수 있는 위험을 감지하고, 클레임을 AI가 분류해 기한 전에 자동 처리합니다."
-        actions={<button className="nv-btn primary" onClick={tab === "claims" ? loadClaims : loadPenalty} disabled={loading}><NvIcon name="refresh" size={15} /> {tab === "claims" ? "클레임 폴링" : "위험 재스캔"}</button>} />
+        actions={<button className="nv-btn ghost sm" onClick={tab === "claims" ? loadClaims : loadPenalty} disabled={loading}><NvIcon name="refresh" size={13} /> {tab === "claims" ? "클레임 폴링" : "위험 재스캔"}</button>} />
 
       <NvSeg style={{ marginBottom: 20 }} value={tab} onChange={setTab} tabs={[["claims", "클레임 자동처리"], ["penalty", "클린페널티"]]} />
 

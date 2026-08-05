@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import NvIcon from "../components/NvIcon";
 import { NvPageHead, NvSeg, NvToggle, NvField, NvBanner, NvStat, NvStatRow, NvStars, NvEmpty } from "../components/atoms";
-import { fetchReviewList } from "../lib/api";
+import { fetchReviewList, generateReviewReply } from "../lib/api";
 
 const FALLBACK_REVIEWS = [
   { id: 1, product: "샤인머스캣 1kg 특품", rating: 5, time: "12분 전", text: "포장 정말 꼼꼼하게 와서 한 알도 안 터졌어요! 당도도 진짜 높고 알도 굵어요. 다음에 또 주문할게요.", reply: "고객님, 따뜻한 후기 정말 감사드립니다 :) 한 알 한 알 정성껏 골라 포장하는 게 저희의 자부심이에요. 다음번에도 가장 좋은 머스캣으로 보내드릴게요!" },
@@ -78,6 +78,22 @@ export default function Customer() {
 
   const toggleInq = id => setInqOpen(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const fakeToast = msg => { setToast(msg); setTimeout(() => setToast(""), 2600); };
+
+  // ── 리뷰 AI 답글 생성 (실제 API 연결) ──
+  const [gening, setGening] = useState(new Set()); // 생성 중인 리뷰 id
+  async function genReply(r) {
+    if (gening.has(r.id)) return;
+    setGening(g => new Set(g).add(r.id));
+    try {
+      const { reply } = await generateReviewReply(r, { tone, customPrompt: ctx, storeName: "우리 스토어" });
+      setReviews(rs => rs.map(x => x.id === r.id ? { ...x, reply } : x));
+      fakeToast(r.reply ? "답글을 다시 생성했어요." : "AI 답글을 생성했어요.");
+    } catch (e) {
+      fakeToast("생성 실패: " + (e.message || "잠시 후 다시 시도해주세요."));
+    } finally {
+      setGening(g => { const n = new Set(g); n.delete(r.id); return n; });
+    }
+  }
   const shownInq = inqFilter === "전체" ? INQUIRIES : INQUIRIES.filter(i => i.cat === inqFilter);
   const shownDone = INQ_DONE.filter(d => !doneSearch || (d.product + d.summary).includes(doneSearch));
 
@@ -161,7 +177,7 @@ export default function Customer() {
                       <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>{r.reply}</div>
                     </div> : <div style={{ fontSize: 12.5, color: "var(--ink-3)", padding: "10px 14px", background: "var(--line-2)", borderRadius: 12 }}>아직 답글이 생성되지 않았어요. 자동 답글이 켜져 있으면 AI가 곧 초안을 만들어요.</div>}
                     {!replied && <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
-                      <button className="nv-btn ghost sm"><NvIcon name="refresh" size={12} /> {r.reply ? "다시 생성" : "답글 생성"}</button>
+                      <button className="nv-btn ghost sm" disabled={gening.has(r.id)} onClick={() => genReply(r)}><NvIcon name="refresh" size={12} /> {gening.has(r.id) ? "생성 중…" : (r.reply ? "다시 생성" : "답글 생성")}</button>
                       {r.reply && <button className="nv-btn ghost sm">수정</button>}
                       <button className={"nv-btn sm " + (s ? "primary" : "ghost")} onClick={() => toggle(r.id)}>{s ? <><NvIcon name="check" size={12} /> 선택됨</> : "선택"}</button>
                     </div>}

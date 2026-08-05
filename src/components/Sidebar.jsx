@@ -36,9 +36,19 @@ export default function Sidebar({ active = "dashboard", onNav = () => {}, counts
 
       <div className="nv-store">
         <div className="nv-store-av">🍇</div>
-        <div style={{ minWidth: 0 }}>
+        <div className="nv-store-info">
           <div className="nv-store-name">{storeName}</div>
           <div className="nv-store-sub">스마트스토어</div>
+        </div>
+        <span className="nv-store-chev">⇄</span>
+      </div>
+
+      {/* AI 작동 상태 (목업) — 실데이터(다음 자동화 시각)는 추후 연결 */}
+      <div className="nv-ai">
+        <span className="nv-ai-pulse" />
+        <div className="nv-ai-text">
+          <div className="nv-ai-title">CommerOne 작동 중</div>
+          <div className="nv-ai-sub">다음 작업 · 20분 후</div>
         </div>
       </div>
 
@@ -50,7 +60,7 @@ export default function Sidebar({ active = "dashboard", onNav = () => {}, counts
               const cnt = counts[it.id];
               return (
                 <button key={it.id} onClick={() => onNav(it.id)} className={"nv-nav-item" + (it.id === active ? " active" : "")}>
-                  <span className="ic"><NvIcon name={it.icon} size={18} /></span>
+                  <span className="ic"><NvIcon name={it.icon} size={22} /></span>
                   <span>{it.label}</span>
                   {cnt != null && cnt > 0 && <span className="cnt">{cnt}</span>}
                   {it.dot && cnt == null && <span className="dot" />}
@@ -61,6 +71,15 @@ export default function Sidebar({ active = "dashboard", onNav = () => {}, counts
         ))}
       </nav>
 
+      {/* 이번 달 아낀 시간 (목업) — 실제 절약시간 집계는 추후 연결 */}
+      <div className="nv-saved">
+        <div className="nv-saved-label">이번 달 아낀 시간</div>
+        <div className="nv-saved-value">
+          <span className="nv-saved-num">72</span><span className="nv-saved-unit">시간</span>
+          <span className="nv-saved-num">18</span><span className="nv-saved-unit">분</span>
+        </div>
+      </div>
+
       <div className="nv-plan">
         <div className="nv-plan-row">
           <span className="nv-plan-tag">PRO 플랜</span>
@@ -70,7 +89,7 @@ export default function Sidebar({ active = "dashboard", onNav = () => {}, counts
         <button className="nv-plan-cta" onClick={() => onNav("settings")}>플랜 관리 <NvIcon name="chevR" size={14} /></button>
       </div>
 
-      <div style={{ marginTop: 10, padding: "10px 12px", borderTop: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ margin: "10px 14px 0", padding: "10px 2px 0", borderTop: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {user?.name || user?.email || "로그인됨"}

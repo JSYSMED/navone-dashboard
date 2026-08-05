@@ -29,7 +29,7 @@ ls "$DIST_DIR"/*.html
 echo ""
 echo "⬆️  업로드 중... (VPS 비밀번호 입력)"
 ssh "$VPS" "rm -rf $TMP && mkdir -p $TMP"
-scp "$DIST_DIR"/*.html "$VPS:$TMP/"
+scp -O "$DIST_DIR"/*.html "$VPS:$TMP/"
 
 # ---- 2. VPS에서 교체 + 권한 + nginx reload (한 번에) ----
 echo ""

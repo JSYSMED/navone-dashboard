@@ -144,7 +144,7 @@ export default function Settlement() {
   return (
     <>
       <NvPageHead title="정산 · 마진 · 광고 분석" sub="정산금부터 수수료·마진·광고 효율까지 한곳에서 봅니다. 별도 입력 없이 자동 제공돼요."
-        actions={<button className="nv-btn primary" onClick={load} disabled={loading}><NvIcon name="refresh" size={15} /> {loading ? "동기화 중…" : "동기화"}</button>} />
+        actions={<button className="nv-btn ghost sm" onClick={load} disabled={loading}><NvIcon name="refresh" size={13} /> {loading ? "동기화 중…" : "동기화"}</button>} />
 
       <NvSeg style={{ marginBottom: 20 }} value={tab} onChange={setTab} tabs={[["now", "정산 현황"], ["fee", "수수료 분석"], ["margin", "마진율 랭킹"], ["ad", "광고 효율"]]} />
 

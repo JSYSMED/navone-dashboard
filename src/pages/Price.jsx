@@ -136,11 +136,11 @@ export default function Price() {
     <>
       <NvPageHead title="가격 관리" sub="경쟁사 최저가를 추적해 자동으로 가격을 조정하고, 자동 실행 주기를 관리합니다."
         actions={tab === "auto" && <>
-          <button className="nv-btn ghost" onClick={runNow} disabled={saving || !enabled}>
-            <NvIcon name="bolt" size={15} /> 지금 실행
+          <button className="nv-btn ghost sm" onClick={runNow} disabled={saving || !enabled}>
+            <NvIcon name="bolt" size={13} /> 지금 실행
           </button>
-          <button className={"nv-btn " + (enabled ? "ghost" : "primary")} onClick={() => save({ enabled: !enabled })} disabled={saving || !cfgLoaded}>
-            <NvIcon name={enabled ? "x" : "check"} size={15} /> {enabled ? "자동 끄기" : "자동 켜기"}
+          <button className={"nv-btn sm " + (enabled ? "ghost" : "primary")} onClick={() => save({ enabled: !enabled })} disabled={saving || !cfgLoaded}>
+            <NvIcon name={enabled ? "x" : "check"} size={13} /> {enabled ? "자동 끄기" : "자동 켜기"}
           </button>
         </>} />
 
